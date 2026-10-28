@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>𝕏 - Personal Note</title>
   
-  <!-- X風のファビコン（SVG Data URI） -->
+  <!-- X風のファビコン -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23000000'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='central' text-anchor='middle' fill='%23ffffff' font-family='sans-serif' font-weight='900' font-size='68'%3E%F0%9D%95%8F%3C/text%3E%3C/svg%3E">
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23000000'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='central' text-anchor='middle' fill='%23ffffff' font-family='sans-serif' font-weight='900' font-size='68'%3E%F0%9D%95%8F%3C/text%3E%3C/svg%3E">
   
@@ -51,6 +51,14 @@
     .post-card-pad {
       padding: var(--post-padding);
     }
+    /* 長文折りたたみ用のマスク処理 */
+    .post-collapsed {
+      max-height: 180px;
+      overflow: hidden;
+      position: relative;
+      mask-image: linear-gradient(to bottom, black 65%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, black 65%, transparent 100%);
+    }
     textarea { field-sizing: content; }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -84,23 +92,23 @@
         <div class="px-3 py-2 text-3xl font-black tracking-tighter flex items-center gap-2">
           <span>𝕏</span>
         </div>
-        <button onclick="setFilter('all')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 font-bold transition">
-          <i data-lucide="home" class="w-5 h-5"></i> ホーム
+        <button id="nav-btn-all" onclick="setFilter('all')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 transition">
+          <i data-lucide="home" class="w-5 h-5"></i> <span>ホーム</span>
         </button>
-        <button onclick="setFilter('bookmark')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 font-bold transition">
-          <i data-lucide="bookmark" class="w-5 h-5"></i> ブックマーク
+        <button id="nav-btn-bookmark" onclick="setFilter('bookmark')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 transition">
+          <i data-lucide="bookmark" class="w-5 h-5"></i> <span>ブックマーク</span>
         </button>
-        <button onclick="setFilter('media')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 font-bold transition">
-          <i data-lucide="image" class="w-5 h-5"></i> メディア
+        <button id="nav-btn-media" onclick="setFilter('media')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 transition">
+          <i data-lucide="image" class="w-5 h-5"></i> <span>メディア</span>
         </button>
-        <button onclick="openCategoryModal()" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 font-bold transition">
-          <i data-lucide="folder-kanban" class="w-5 h-5"></i> カテゴリー管理
+        <button onclick="openCategoryModal()" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 theme-sub hover:text-white transition">
+          <i data-lucide="folder-kanban" class="w-5 h-5"></i> <span>カテゴリー管理</span>
         </button>
-        <button onclick="openProfileModal()" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 font-bold transition">
-          <i data-lucide="user" class="w-5 h-5"></i> プロフィール設定
+        <button onclick="openProfileModal()" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 theme-sub hover:text-white transition">
+          <i data-lucide="user" class="w-5 h-5"></i> <span>プロフィール設定</span>
         </button>
-        <button onclick="openDisplayModal()" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 font-bold transition">
-          <i data-lucide="sliders" class="w-5 h-5"></i> 表示・文字・配色
+        <button onclick="openDisplayModal()" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 theme-sub hover:text-white transition">
+          <i data-lucide="sliders" class="w-5 h-5"></i> <span>表示・文字・配色</span>
         </button>
 
         <div class="pt-4">
@@ -129,11 +137,20 @@
     <main class="flex-1 min-w-0 border-r theme-border pb-24 md:pb-12">
       
       <!-- 上部固定ヘッダー＆カテゴリータブ -->
-      <header class="sticky top-0 z-30 backdrop-blur-md bg-black/75 border-b theme-border">
+      <header class="sticky top-0 z-30 backdrop-blur-md bg-black/80 border-b theme-border">
         <div class="px-4 py-2.5 flex items-center justify-between gap-3">
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2.5">
+            <button id="back-home-btn" onclick="setFilter('all')" class="hidden p-1.5 -ml-1 rounded-full hover:bg-white/10 transition" title="ホームに戻る">
+              <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            </button>
             <span class="md:hidden font-black text-2xl">𝕏</span>
-            <h2 id="header-title" class="font-bold text-base">ホーム</h2>
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 id="header-title" class="font-bold text-base leading-tight">ホーム</h2>
+                <span id="header-mode-badge" class="hidden text-[10px] px-2 py-0.5 rounded-full font-bold bg-sky-500/20 text-sky-400 border border-sky-500/30"></span>
+              </div>
+              <p id="header-subtitle" class="text-[11px] theme-sub hidden"></p>
+            </div>
           </div>
           <div class="flex items-center gap-2 flex-1 max-w-xs">
             <div class="relative w-full">
@@ -147,8 +164,22 @@
         <div id="category-tabs" class="flex items-center overflow-x-auto border-t theme-border text-xs font-bold no-scrollbar"></div>
       </header>
 
-      <!-- X風プロフィールヘッダー -->
-      <section class="border-b theme-border">
+      <!-- モード切替バナー（ブックマークやメディア表示時にホームと明確に区別するバー） -->
+      <div id="filter-banner" class="hidden px-4 py-3 border-b theme-border flex items-center justify-between bg-sky-500/10">
+        <div class="flex items-center gap-2.5">
+          <div id="filter-banner-icon" class="w-8 h-8 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center"></div>
+          <div>
+            <div id="filter-banner-title" class="text-xs font-bold text-white">ブックマーク表示中</div>
+            <div id="filter-banner-desc" class="text-[11px] theme-sub">保存したポストのみを表示しています</div>
+          </div>
+        </div>
+        <button onclick="setFilter('all')" class="px-3 py-1 rounded-full text-xs font-bold bg-white/10 hover:bg-white/20 text-white transition">
+          ホームに戻る
+        </button>
+      </div>
+
+      <!-- X風プロフィールヘッダー（ホーム表示時のみ表示） -->
+      <section id="profile-section" class="border-b theme-border">
         <div class="h-36 sm:h-44 w-full bg-gradient-to-r from-slate-900 via-sky-950 to-slate-900 relative overflow-hidden">
           <img id="profile-banner" src="" class="w-full h-full object-cover hidden">
         </div>
@@ -174,7 +205,7 @@
       <div id="feed-list" class="divide-y theme-border"></div>
     </main>
 
-    <!-- 右サイドバー（タグ＆ショートカット案内） -->
+    <!-- 右サイドバー -->
     <aside class="hidden lg:block w-72 p-4 space-y-4 sticky top-0 h-screen overflow-y-auto shrink-0">
       <div class="theme-card rounded-2xl p-4 border theme-border">
         <h3 class="font-bold text-sm mb-3 flex items-center gap-1.5">
@@ -190,7 +221,7 @@
           <i data-lucide="zap" class="w-4 h-4 theme-accent-text"></i> 便利機能
         </div>
         <p>・<b>スクショ直貼り：</b>投稿ウィンドウで <code class="px-1 py-0.5 bg-white/10 rounded">Ctrl + V</code> を押すと、クリップボードの画像をカーソル位置に直接差し込めます。</p>
-        <p>・<b>スレッド追記：</b>各投稿の「💬 スレッド追記」から、ツリー形式でノートを繋げられます。</p>
+        <p>・<b>長文自動折りたたみ：</b>長い文章は自動で折りたたまれ、「さらに表示」で開閉できます。</p>
       </div>
     </aside>
   </div>
@@ -202,19 +233,18 @@
 
   <!-- スマホ用下部ナビゲーション -->
   <nav class="md:hidden fixed bottom-0 inset-x-0 z-30 bg-black/95 backdrop-blur border-t theme-border flex justify-around py-2.5">
-    <button onclick="setFilter('all')" class="p-2 theme-sub hover:text-white"><i data-lucide="home" class="w-5 h-5"></i></button>
-    <button onclick="setFilter('bookmark')" class="p-2 theme-sub hover:text-white"><i data-lucide="bookmark" class="w-5 h-5"></i></button>
+    <button id="m-nav-all" onclick="setFilter('all')" class="p-2 rounded-full transition"><i data-lucide="home" class="w-5 h-5"></i></button>
+    <button id="m-nav-bookmark" onclick="setFilter('bookmark')" class="p-2 rounded-full transition"><i data-lucide="bookmark" class="w-5 h-5"></i></button>
+    <button id="m-nav-media" onclick="setFilter('media')" class="p-2 rounded-full transition"><i data-lucide="image" class="w-5 h-5"></i></button>
     <button onclick="openCategoryModal()" class="p-2 theme-sub hover:text-white"><i data-lucide="folder-kanban" class="w-5 h-5"></i></button>
-    <button onclick="openProfileModal()" class="p-2 theme-sub hover:text-white"><i data-lucide="user" class="w-5 h-5"></i></button>
     <button onclick="openDisplayModal()" class="p-2 theme-sub hover:text-white"><i data-lucide="sliders" class="w-5 h-5"></i></button>
   </nav>
 
   <!-- ========================================================================= -->
-  <!-- 1. 投稿・スレッド追記ポップアップモーダル（Ctrl+V ペースト対応） -->
+  <!-- 1. 投稿・スレッド追記ポップアップモーダル -->
   <!-- ========================================================================= -->
   <div id="post-modal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-start justify-center p-2 sm:p-6 overflow-y-auto">
     <div class="w-full max-w-2xl theme-card border theme-border rounded-2xl shadow-2xl overflow-hidden my-auto">
-      <!-- モーダルヘッダー -->
       <div class="px-4 py-3 border-b theme-border flex items-center justify-between">
         <button onclick="closePostModal()" class="p-1.5 rounded-full hover:bg-white/10">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -225,22 +255,17 @@
         </button>
       </div>
 
-      <!-- モーダル中身 -->
       <div class="p-4 space-y-3 max-h-[75vh] overflow-y-auto">
-        <!-- スレッド返信先プレビュー -->
         <div id="reply-parent-info" class="hidden text-xs px-3 py-2 rounded-lg bg-white/5 border theme-border theme-sub"></div>
 
-        <!-- カテゴリー選択＆タイトル -->
         <div class="flex flex-wrap items-center gap-2">
           <select id="post-category" class="theme-card border theme-border rounded-full px-3 py-1 text-xs font-bold outline-none"></select>
           <input id="post-title" type="text" placeholder="タイトル（任意）" class="flex-1 bg-transparent text-sm font-bold placeholder-gray-500 outline-none border-b theme-border pb-1">
         </div>
 
-        <!-- ブロック一覧 -->
         <div id="editor-blocks" class="space-y-3"></div>
       </div>
 
-      <!-- モーダル下部ツールバー -->
       <div class="px-4 py-3 border-t theme-border flex flex-wrap items-center justify-between gap-2 bg-black/30">
         <div class="flex items-center gap-1">
           <label class="cursor-pointer p-2 rounded-full hover:bg-white/10 theme-accent-text transition flex items-center gap-1 text-xs font-bold" title="カーソル位置に写真を挿入">
@@ -365,7 +390,7 @@
   </div>
 
   <!-- ========================================================================= -->
-  <!-- 4. カテゴリー（タブ）管理モーダル -->
+  <!-- 4. カテゴリー（タブ）管理モーダル（名前変更・並び替え・削除対応） -->
   <!-- ========================================================================= -->
   <div id="category-modal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="w-full max-w-md theme-card border theme-border rounded-2xl p-5 space-y-4">
@@ -375,9 +400,10 @@
       </div>
       <div class="flex gap-2">
         <input id="new-category-input" type="text" placeholder="新しいカテゴリー名（例：勉強・料理・日記）" class="flex-1 bg-black/40 border theme-border rounded-lg px-3 py-2 text-xs outline-none">
-        <button onclick="addCategory()" class="px-4 py-2 rounded-lg theme-accent-bg text-white font-bold text-xs">追加</button>
+        <button onclick="addCategory()" class="px-4 py-2 rounded-lg theme-accent-bg text-white font-bold text-xs shrink-0">追加</button>
       </div>
-      <div id="category-manage-list" class="space-y-1.5 max-h-60 overflow-y-auto text-xs"></div>
+      <p class="text-[11px] theme-sub">※「名前変更」を押すと、そのタブに入っている過去の投稿のカテゴリー名もすべて自動で書き換わります。</p>
+      <div id="category-manage-list" class="space-y-2 max-h-72 overflow-y-auto text-xs"></div>
     </div>
   </div>
 
@@ -395,7 +421,7 @@
     // =========================================================================
     // ★ここに自分の firebaseConfig を貼り付けてください
     // =========================================================================
-const firebaseConfig = {
+   const firebaseConfig = {
   apiKey: "AIzaSyDHY8YRAmdJlGdB24inmnX5wmL4Ikt66bA",
   authDomain: "my-x-note.firebaseapp.com",
   databaseURL: "https://my-x-note-default-rtdb.firebaseio.com",
@@ -414,11 +440,14 @@ const firebaseConfig = {
 
     let currentUser = null;
     let postsData = [];
-    let categories = ['すべて', 'メモ', '学習', '日記'];
+    let categories = ['すべて', '日記', 'メモ', 'アイデア'];
     let currentCategory = 'すべて';
     let currentFilter = 'all';
     let editingPostId = null;
     let replyParentId = null;
+
+    // 展開済みの長文ポストIDを保持するSet
+    const expandedPostIds = new Set();
 
     let profileData = {
       name: 'Personal Note',
@@ -463,27 +492,24 @@ const firebaseConfig = {
       document.getElementById('app-screen').classList.remove('hidden');
       document.getElementById('user-email').textContent = user.email;
 
-      // 投稿購読
       onValue(ref(db, `users/${user.uid}/posts`), (snap) => {
         const val = snap.val() || {};
         postsData = Object.entries(val).map(([id, item]) => ({ id, ...item }));
+        updateNavigationUI();
         renderFeed();
         renderTags();
       });
 
-      // プロフィール購読
       onValue(ref(db, `users/${user.uid}/profile`), (snap) => {
         if (snap.val()) profileData = { ...profileData, ...snap.val() };
         applyProfileUI();
       });
 
-      // カテゴリー購読
       onValue(ref(db, `users/${user.uid}/categories`), (snap) => {
         if (snap.val() && Array.isArray(snap.val())) categories = snap.val();
         renderCategories();
       });
 
-      // 表示設定購読
       onValue(ref(db, `users/${user.uid}/settings`), (snap) => {
         if (snap.val()) themeSettings = { ...themeSettings, ...snap.val() };
         applyThemeSettings();
@@ -540,7 +566,9 @@ const firebaseConfig = {
       if (currentUser) set(ref(db, `users/${currentUser.uid}/settings`), themeSettings);
     };
 
-    // カテゴリー描画
+    // =========================================================================
+    // カテゴリー描画・名前変更・並び替え・削除
+    // =========================================================================
     function renderCategories() {
       const tabBar = document.getElementById('category-tabs');
       const selectEl = document.getElementById('post-category');
@@ -549,19 +577,25 @@ const firebaseConfig = {
       if (!categories.includes('すべて')) categories.unshift('すべて');
 
       tabBar.innerHTML = categories.map(cat => `
-        <button onclick="selectCategory('${cat}')" class="px-4 py-3 whitespace-nowrap border-b-2 transition ${currentCategory === cat ? 'theme-accent-border theme-accent-text' : 'border-transparent theme-sub hover:text-white'}">
+        <button onclick="selectCategory('${cat}')" class="px-4 py-3 whitespace-nowrap border-b-2 transition ${currentCategory === cat ? 'theme-accent-border theme-accent-text font-extrabold' : 'border-transparent theme-sub hover:text-white'}">
           ${cat}
         </button>
       `).join('');
 
-      selectEl.innerHTML = categories.filter(c => c !== 'すべて').map(cat =>
+      const userCats = categories.filter(c => c !== 'すべて');
+      selectEl.innerHTML = userCats.map(cat =>
         `<option value="${cat}">${cat}</option>`
       ).join('');
 
-      manageList.innerHTML = categories.filter(c => c !== 'すべて').map(cat => `
-        <div class="flex items-center justify-between px-3 py-2 rounded-lg bg-black/30 border theme-border">
-          <span>${cat}</span>
-          <button onclick="deleteCategory('${cat}')" class="text-red-400 hover:underline">削除</button>
+      manageList.innerHTML = userCats.map((cat, idx) => `
+        <div class="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-black/40 border theme-border">
+          <span class="font-bold text-sm truncate flex-1">${cat}</span>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button onclick="moveCategory(${idx}, -1)" class="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-gray-300" title="上へ">↑</button>
+            <button onclick="moveCategory(${idx}, 1)" class="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-gray-300" title="下へ">↓</button>
+            <button onclick="renameCategory('${cat}')" class="px-2.5 py-1 rounded bg-sky-500/15 text-sky-400 hover:bg-sky-500/25 font-bold">名前変更</button>
+            <button onclick="deleteCategory('${cat}')" class="px-2.5 py-1 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 font-bold">削除</button>
+          </div>
         </div>
       `).join('');
     }
@@ -582,12 +616,123 @@ const firebaseConfig = {
       renderCategories();
     };
 
+    // ★ カテゴリー名の変更（既存投稿のカテゴリー名も一括更新）
+    window.renameCategory = async function(oldName) {
+      const newName = prompt(`「${oldName}」の新しいタブ名を入力してください:`, oldName);
+      if (!newName || !newName.trim() || newName.trim() === oldName) return;
+      const trimmed = newName.trim();
+      if (categories.includes(trimmed)) {
+        alert('同じ名前のタブが既に存在します。');
+        return;
+      }
+
+      categories = categories.map(c => c === oldName ? trimmed : c);
+      if (currentCategory === oldName) currentCategory = trimmed;
+
+      if (currentUser) {
+        await set(ref(db, `users/${currentUser.uid}/categories`), categories);
+        const updates = {};
+        postsData.forEach(p => {
+          if (p.category === oldName) {
+            updates[`users/${currentUser.uid}/posts/${p.id}/category`] = trimmed;
+          }
+        });
+        if (Object.keys(updates).length > 0) {
+          await update(ref(db), updates);
+        }
+      }
+      renderCategories();
+      renderFeed();
+    };
+
+    // カテゴリーの並び替え
+    window.moveCategory = function(userCatIdx, dir) {
+      const userCats = categories.filter(c => c !== 'すべて');
+      const target = userCatIdx + dir;
+      if (target < 0 || target >= userCats.length) return;
+      [userCats[userCatIdx], userCats[target]] = [userCats[target], userCats[userCatIdx]];
+      categories = ['すべて', ...userCats];
+      if (currentUser) set(ref(db, `users/${currentUser.uid}/categories`), categories);
+      renderCategories();
+    };
+
     window.deleteCategory = function(name) {
+      if (!confirm(`タブ「${name}」を削除しますか？（投稿自体は削除されません）`)) return;
       categories = categories.filter(c => c !== name);
       if (currentCategory === name) currentCategory = 'すべて';
       if (currentUser) set(ref(db, `users/${currentUser.uid}/categories`), categories);
       renderCategories();
       renderFeed();
+    };
+
+    // =========================================================================
+    // ホーム / ブックマーク / メディア の視覚的な区別（ヘッダー＆バナー切替）
+    // =========================================================================
+    function updateNavigationUI() {
+      const filters = ['all', 'bookmark', 'media'];
+      filters.forEach(f => {
+        const pcBtn = document.getElementById(`nav-btn-${f}`);
+        const mBtn = document.getElementById(`m-nav-${f}`);
+        const isActive = currentFilter === f;
+        if (pcBtn) {
+          pcBtn.className = `w-full flex items-center gap-4 px-4 py-3 rounded-full transition ${isActive ? 'font-extrabold bg-white/10 text-white' : 'font-normal theme-sub hover:bg-white/5 hover:text-white'}`;
+        }
+        if (mBtn) {
+          mBtn.className = `p-2 rounded-full transition ${isActive ? 'theme-accent-text bg-white/10' : 'theme-sub hover:text-white'}`;
+        }
+      });
+
+      const profileSec = document.getElementById('profile-section');
+      const filterBanner = document.getElementById('filter-banner');
+      const backBtn = document.getElementById('back-home-btn');
+      const titleEl = document.getElementById('header-title');
+      const badgeEl = document.getElementById('header-mode-badge');
+      const subEl = document.getElementById('header-subtitle');
+
+      if (currentFilter === 'all') {
+        profileSec.classList.remove('hidden');
+        filterBanner.classList.add('hidden');
+        backBtn.classList.add('hidden');
+        titleEl.textContent = 'ホーム';
+        badgeEl.classList.add('hidden');
+        subEl.classList.add('hidden');
+      } else if (currentFilter === 'bookmark') {
+        const count = postsData.filter(p => p.bookmarked).length;
+        profileSec.classList.add('hidden');
+        filterBanner.classList.remove('hidden');
+        backBtn.classList.remove('hidden');
+        titleEl.textContent = 'ブックマーク';
+        badgeEl.textContent = `${count}件`;
+        badgeEl.classList.remove('hidden');
+        subEl.textContent = profileData.handle;
+        subEl.classList.remove('hidden');
+
+        document.getElementById('filter-banner-icon').innerHTML = `<i data-lucide="bookmark" class="w-4 h-4"></i>`;
+        document.getElementById('filter-banner-title').textContent = `ブックマーク一覧（保存済み ${count} 件）`;
+        document.getElementById('filter-banner-desc').textContent = 'ブックマークしたポストとスレッドのみを表示しています';
+      } else if (currentFilter === 'media') {
+        const count = postsData.filter(p => (p.blocks || []).some(b => b.type !== 'text')).length;
+        profileSec.classList.add('hidden');
+        filterBanner.classList.remove('hidden');
+        backBtn.classList.remove('hidden');
+        titleEl.textContent = 'メディア';
+        badgeEl.textContent = `${count}件`;
+        badgeEl.classList.remove('hidden');
+        subEl.textContent = profileData.handle;
+        subEl.classList.remove('hidden');
+
+        document.getElementById('filter-banner-icon').innerHTML = `<i data-lucide="image" class="w-4 h-4"></i>`;
+        document.getElementById('filter-banner-title').textContent = `メディア付きポスト一覧（${count} 件）`;
+        document.getElementById('filter-banner-desc').textContent = '写真や動画が含まれるポストのみを表示しています';
+      }
+      lucide.createIcons();
+    }
+
+    window.setFilter = function(f) {
+      currentFilter = f;
+      updateNavigationUI();
+      renderFeed();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     // モーダル開閉処理
@@ -602,9 +747,9 @@ const firebaseConfig = {
       if (parentId) {
         const parent = postsData.find(p => p.id === parentId);
         const preview = parent ? (parent.title || (parent.blocks?.[0]?.content || '').slice(0, 40)) : '';
-        replyInfo.textContent = `💬 スレッド追記先: ${preview || '親ポスト'}`;
+        replyInfo.textContent = `返信先: ${preview || '親ポスト'}`;
         replyInfo.classList.remove('hidden');
-        document.getElementById('modal-mode-label').textContent = 'スレッドに追記';
+        document.getElementById('modal-mode-label').textContent = 'スレッドに返信';
         if (parent?.category) document.getElementById('post-category').value = parent.category;
       } else {
         replyInfo.classList.add('hidden');
@@ -660,7 +805,7 @@ const firebaseConfig = {
 
         const controls = `
           <div class="flex items-center justify-between text-[11px] theme-sub mb-1">
-            <span>${block.type === 'text' ? '📝 テキスト段落' : block.type === 'image' ? '🖼️ 写真' : '🎬 動画 / URL'}</span>
+            <span>${block.type === 'text' ? 'テキスト段落' : block.type === 'image' ? '写真' : '動画 / URL'}</span>
             <div class="flex items-center gap-1">
               <button onclick="moveBlock(${idx}, -1)" class="px-1.5 py-0.5 hover:bg-white/10 rounded">↑</button>
               <button onclick="moveBlock(${idx}, 1)" class="px-1.5 py-0.5 hover:bg-white/10 rounded">↓</button>
@@ -737,7 +882,6 @@ const firebaseConfig = {
       renderEditor();
     }
 
-    // 画像自動圧縮
     async function compressImage(file, maxDim = 1200) {
       return new Promise((resolve) => {
         const reader = new FileReader();
@@ -760,7 +904,6 @@ const firebaseConfig = {
       });
     }
 
-    // ファイル選択からの写真挿入
     document.getElementById('photo-input').addEventListener('change', async (e) => {
       const files = Array.from(e.target.files || []);
       for (const file of files) {
@@ -770,7 +913,6 @@ const firebaseConfig = {
       e.target.value = '';
     });
 
-    // ★ Ctrl + V（クリップボードのスクショ直接貼り付け）対応
     window.addEventListener('paste', async (e) => {
       const modalOpen = !document.getElementById('post-modal').classList.contains('hidden');
       if (!modalOpen) return;
@@ -817,7 +959,6 @@ const firebaseConfig = {
       if (editorBlocks[idx]) editorBlocks[idx].caption = val;
     };
 
-    // 投稿保存
     window.savePost = async function() {
       if (!currentUser) return;
       const title = document.getElementById('post-title').value.trim();
@@ -860,15 +1001,37 @@ const firebaseConfig = {
       return `<img src="${url}" onclick="openLightbox('${url}')" class="max-h-96 rounded-xl object-contain my-2 cursor-zoom-in">`;
     }
 
-    // 単一ポストのHTML生成（親ポスト・スレッド子ポスト共通）
-    function buildPostItemHtml(post, isChild = false, hasNextSibling = false) {
-      const dateStr = new Date(post.createdAt || Date.now()).toLocaleString('ja-JP');
+    // 長文の「さらに表示 / 折りたたむ」切替
+    window.toggleExpandPost = function(id) {
+      if (expandedPostIds.has(id)) {
+        expandedPostIds.delete(id);
+      } else {
+        expandedPostIds.add(id);
+      }
+      renderFeed();
+    };
+
+    // 単一ポストのHTML生成（本家X風の控えめなSVGアイコン＆長文折りたたみ対応）
+    function buildPostItemHtml(post, isChild = false, hasNextSibling = false, replyCount = 0) {
+      const dateStr = new Date(post.createdAt || Date.now()).toLocaleString('ja-JP', {
+        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+
+      const totalText = (post.blocks || [])
+        .filter(b => b.type === 'text')
+        .map(b => b.content || '')
+        .join('\n');
+      const lineCount = totalText.split('\n').length;
+      const isLongPost = totalText.length > 220 || lineCount > 6 || (post.blocks || []).length > 2;
+      const isExpanded = expandedPostIds.has(post.id);
+      const shouldCollapse = isLongPost && !isExpanded;
+
       const blocksHtml = (post.blocks || []).map(b => {
         if (b.type === 'text') {
           const escaped = (b.content || '')
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
             .replace(/(#[^\s#]+)/g, '<span onclick="filterByTag(\'$1\')" class="theme-accent-text hover:underline cursor-pointer">$1</span>');
-          return `<p class="whitespace-pre-wrap post-text my-1.5">${escaped}</p>`;
+          return `<p class="whitespace-pre-wrap post-text my-1">${escaped}</p>`;
         }
         if (b.type === 'image') {
           return `<figure class="my-2">
@@ -884,35 +1047,95 @@ const firebaseConfig = {
         return '';
       }).join('');
 
+      const targetThreadId = post.parentId || post.id;
+
       return `
         <div class="flex gap-3 ${isChild ? 'pt-3' : ''}">
           <div class="flex flex-col items-center shrink-0">
             <img src="${profileData.avatar || DEFAULT_AVATAR}" class="w-10 h-10 rounded-full object-cover border theme-border">
-            ${hasNextSibling ? `<div class="w-0.5 flex-1 bg-gray-700 my-1"></div>` : ''}
+            ${hasNextSibling ? `<div class="w-0.5 flex-1 bg-zinc-800 my-1"></div>` : ''}
           </div>
           <div class="flex-1 min-w-0">
+            ${post.pinned && !isChild ? `
+              <div class="flex items-center gap-1.5 text-[11px] theme-sub font-bold mb-1">
+                <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M16 9V4l1 0c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1l1 0v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z"/></svg>
+                <span>固定されたポスト</span>
+              </div>
+            ` : ''}
+
             <div class="flex items-center justify-between text-xs theme-sub mb-1">
               <div class="flex items-center gap-1.5 flex-wrap">
                 <span class="font-bold text-[14px]" style="color: var(--text-main)">${profileData.name}</span>
                 <span>${profileData.handle}</span>
                 <span>· ${dateStr}</span>
                 ${post.category ? `<span class="px-2 py-0.5 rounded-full bg-white/5 border theme-border text-[10px]">${post.category}</span>` : ''}
-                ${post.pinned ? '<span class="theme-accent-text font-bold">📌 固定</span>' : ''}
               </div>
             </div>
+
             ${post.title ? `<h3 class="font-bold text-base mb-1">${post.title}</h3>` : ''}
-            <div>${blocksHtml}</div>
-            <!-- アクションバー -->
-            <div class="flex items-center gap-5 mt-3 text-xs theme-sub">
-              <button onclick="openPostModal('${post.parentId || post.id}')" class="hover:text-sky-400 flex items-center gap-1" title="このスレッドに追記">
-                💬 <span>スレッド追記</span>
+
+            <!-- 本文領域（長文時は自動折りたたみ） -->
+            <div class="${shouldCollapse ? 'post-collapsed' : ''}">
+              ${blocksHtml}
+            </div>
+
+            ${isLongPost ? `
+              <button onclick="toggleExpandPost('${post.id}')" class="mt-1 text-xs font-bold theme-accent-text hover:underline block">
+                ${shouldCollapse ? 'さらに表示' : '折りたたむ'}
               </button>
-              <button onclick="toggleBookmark('${post.id}', ${!!post.bookmarked})" class="hover:text-amber-400">
-                ${post.bookmarked ? '★ 保存済' : '☆ ブックマーク'}
+            ` : ''}
+
+            <!-- 本家X風の控えめなSVGアイコンアクションバー -->
+            <div class="flex items-center justify-between max-w-md mt-2 -ml-2 text-xs theme-sub select-none">
+              
+              <!-- スレッド返信（吹き出しアイコン） -->
+              <button onclick="openPostModal('${targetThreadId}')" class="group flex items-center gap-1 hover:text-sky-400 transition" title="スレッドに追記">
+                <div class="p-2 rounded-full group-hover:bg-sky-500/10 transition">
+                  <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z"/>
+                  </svg>
+                </div>
+                ${!isChild && replyCount > 0 ? `<span class="text-xs">${replyCount}</span>` : ''}
               </button>
-              ${!isChild ? `<button onclick="togglePin('${post.id}', ${!!post.pinned})" class="hover:text-sky-400">📌 固定</button>` : ''}
-              <button onclick="startEdit('${post.id}')" class="hover:text-sky-400">編集</button>
-              <button onclick="deletePost('${post.id}')" class="hover:text-red-400">削除</button>
+
+              <!-- ブックマーク（リボンアイコン） -->
+              <button onclick="toggleBookmark('${post.id}', ${!!post.bookmarked})" class="group flex items-center gap-1 ${post.bookmarked ? 'text-sky-400' : 'hover:text-sky-400'} transition" title="ブックマーク">
+                <div class="p-2 rounded-full group-hover:bg-sky-500/10 transition">
+                  <svg class="w-[18px] h-[18px]" fill="${post.bookmarked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"/>
+                  </svg>
+                </div>
+              </button>
+
+              <!-- ピン留め -->
+              ${!isChild ? `
+                <button onclick="togglePin('${post.id}', ${!!post.pinned})" class="group flex items-center gap-1 ${post.pinned ? 'text-emerald-400' : 'hover:text-emerald-400'} transition" title="プロフィールに固定">
+                  <div class="p-2 rounded-full group-hover:bg-emerald-500/10 transition">
+                    <svg class="w-[18px] h-[18px]" fill="${post.pinned ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z"/>
+                    </svg>
+                  </div>
+                </button>
+              ` : ''}
+
+              <!-- 編集（ペンアイコン） -->
+              <button onclick="startEdit('${post.id}')" class="group flex items-center gap-1 hover:text-sky-400 transition" title="編集">
+                <div class="p-2 rounded-full group-hover:bg-sky-500/10 transition">
+                  <svg class="w-[17px] h-[17px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"/>
+                  </svg>
+                </div>
+              </button>
+
+              <!-- 削除（ゴミ箱アイコン） -->
+              <button onclick="deletePost('${post.id}')" class="group flex items-center gap-1 hover:text-red-400 transition" title="削除">
+                <div class="p-2 rounded-full group-hover:bg-red-500/10 transition">
+                  <svg class="w-[17px] h-[17px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/>
+                  </svg>
+                </div>
+              </button>
+
             </div>
           </div>
         </div>
@@ -936,7 +1159,7 @@ const firebaseConfig = {
 
       const rootPosts = postsData.filter(p => !p.parentId);
       rootPosts.sort((a, b) => {
-        if (!!b.pinned !== !!a.pinned) return b.pinned ? 1 : -1;
+        if (currentFilter === 'all' && !!b.pinned !== !!a.pinned) return b.pinned ? 1 : -1;
         return (b.createdAt || 0) - (a.createdAt || 0);
       });
 
@@ -953,7 +1176,12 @@ const firebaseConfig = {
       });
 
       if (filteredRoots.length === 0) {
-        list.innerHTML = `<div class="p-12 text-center text-sm theme-sub">表示できるポストがありません（右下の「＋」ボタンから投稿できます）</div>`;
+        const emptyMsg = currentFilter === 'bookmark'
+          ? 'まだブックマークされたポストがありません。各ポストのリボンアイコンから保存できます。'
+          : currentFilter === 'media'
+          ? '写真や動画付きのポストがありません。'
+          : '表示できるポストがありません（右下の「＋」ボタンから投稿できます）';
+        list.innerHTML = `<div class="p-12 text-center text-sm theme-sub">${emptyMsg}</div>`;
         return;
       }
 
@@ -962,9 +1190,9 @@ const firebaseConfig = {
         const article = document.createElement('article');
         article.className = "post-card-pad hover:bg-white/[0.02] transition";
 
-        let html = buildPostItemHtml(root, false, replies.length > 0);
+        let html = buildPostItemHtml(root, false, replies.length > 0, replies.length);
         replies.forEach((rep, idx) => {
-          html += buildPostItemHtml(rep, true, idx < replies.length - 1);
+          html += buildPostItemHtml(rep, true, idx < replies.length - 1, 0);
         });
 
         article.innerHTML = html;
@@ -994,13 +1222,6 @@ const firebaseConfig = {
       renderFeed();
     };
 
-    window.setFilter = function(f) {
-      currentFilter = f;
-      document.getElementById('header-title').textContent =
-        f === 'all' ? 'ホーム' : f === 'bookmark' ? 'ブックマーク' : 'メディア';
-      renderFeed();
-    };
-
     window.togglePin = (id, cur) => update(ref(db, `users/${currentUser.uid}/posts/${id}`), { pinned: !cur });
     window.toggleBookmark = (id, cur) => update(ref(db, `users/${currentUser.uid}/posts/${id}`), { bookmarked: !cur });
     window.deletePost = (id) => { if (confirm('このポストを削除しますか？')) remove(ref(db, `users/${currentUser.uid}/posts/${id}`)); };
@@ -1027,6 +1248,7 @@ const firebaseConfig = {
 
     document.getElementById('search-input').addEventListener('input', renderFeed);
 
+    updateNavigationUI();
     renderCategories();
     renderEditor();
     lucide.createIcons();
