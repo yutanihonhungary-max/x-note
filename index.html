@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>X-Note Personal</title>
+  
+  <!-- PWA用設定（スマホでアドレスバーを消してネイティブアプリ化する設定） -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="X-Note">
+  
+  <!-- Tailwind CSS & Lucide Icons -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            xblue: '#1d9bf0',
+            xdark: '#000000',
+            xcard: '#16181c',
+            xborder: '#2f3336'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    textarea { field-sizing: content; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #2f3336; border-radius: 3px; }
+  </style>
+</head>
+<body class="bg-white dark:bg-xdark text-gray-900 dark:text-gray-100 min-h-screen selection:bg-xblue selection:text-white">
+
+  <!-- 未ログイン時のロック画面 -->
+  <div id="login-screen" class="fixed inset-0 z-50 bg-xdark flex flex-col items-center justify-center p-6">
+    <div class="w-full max-w-sm bg-xcard border border-xborder rounded-2xl p-8 text-center shadow-2xl">
+      <div class="w-14 h-14 rounded-2xl bg-xblue/10 border border-xblue/30 flex items-center justify-center mx-auto mb-4 text-xblue font-black text-3xl">
+        𝕏
+      </div>
+      <h1 class="text-xl font-bold text-white mb-2">X-Note Personal</h1>
+      <p class="text-xs text-gray-400 mb-6">自分専用の長文・メディア同期アプリ<br>（Realtime Database 連携）</p>
+      <button id="login-btn" class="w-full py-3 px-4 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition flex items-center justify-center gap-2">
+        <i data-lucide="log-in" class="w-4 h-4"></i>
+        Googleでログイン
+      </button>
+      <p id="auth-error" class="text-xs text-red-400 mt-4 hidden"></p>
+    </div>
+  </div>
+
+  <!-- メイン画面 -->
+  <div id="app-screen" class="hidden max-w-6xl mx-auto min-h-screen flex">
+    
+    <!-- 左サイドバー（PC用） -->
+    <aside class="hidden md:flex flex-col w-64 border-r border-gray-200 dark:border-xborder p-4 sticky top-0 h-screen justify-between">
+      <div class="space-y-2">
+        <div class="px-3 py-2 text-2xl font-black tracking-tighter flex items-center gap-2">
+          <span>𝕏</span>
+          <span class="text-base font-bold text-gray-400">Note</span>
+        </div>
+        <button onclick="setFilter('all')" id="nav-all" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-gray-100 dark:hover:bg-xcard font-bold transition">
+          <i data-lucide="home" class="w-5 h-5"></i> すべて
+        </button>
+        <button onclick="setFilter('bookmark')" id="nav-bookmark" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-gray-100 dark:hover:bg-xcard font-bold transition">
+          <i data-lucide="bookmark" class="w-5 h-5"></i> ブックマーク
+        </button>
+        <button onclick="setFilter('media')" id="nav-media" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-gray-100 dark:hover:bg-xcard font-bold transition">
+          <i data-lucide="image" class="w-5 h-5"></i> メディア付き
+        </button>
+        <button onclick="toggleTheme()" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-gray-100 dark:hover:bg-xcard font-bold transition">
+          <i data-lucide="moon" class="w-5 h-5"></i> テーマ切替
+        </button>
+      </div>
+
+      <div class="border-t border-gray-200 dark:border-xborder pt-4 space-y-2">
+        <div class="px-3 flex items-center justify-between">
+          <span id="user-email" class="text-xs text-gray-400 truncate max-w-[160px]"></span>
+          <span class="w-2 h-2 rounded-full bg-emerald-500" title="Realtime DB 同期中"></span>
+        </div>
+        <button id="logout-btn" class="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 rounded-full transition">
+          <i data-lucide="log-out" class="w-4 h-4"></i> ログアウト
+        </button>
+      </div>
+    </aside>
+
+    <!-- 中央タイムライン -->
+    <main class="flex-1 min-w-0 border-r border-gray-200 dark:border-xborder pb-20 md:pb-10">
+      
+      <!-- ヘッダー -->
+      <header class="sticky top-0 z-30 backdrop-blur-md bg-white/80 dark:bg-xdark/80 border-b border-gray-200 dark:border-xborder px-4 py-3 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <span class="md:hidden font-black text-xl">𝕏</span>
+          <h2 id="header-title" class="font-bold text-base">タイムライン</h2>
+        </div>
+        <div class="flex items-center gap-2 flex-1 max-w-xs">
+          <div class="relative w-full">
+            <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input id="search-input" type="text" placeholder="キーワードや #タグ で検索..." class="w-full bg-gray-100 dark:bg-xcard border border-transparent focus:border-xblue rounded-full pl-9 pr-4 py-1.5 text-xs outline-none">
+          </div>
+        </div>
+      </header>
+
+      <!-- 投稿・ブロックエディタ -->
+      <section class="border-b border-gray-200 dark:border-xborder p-4 bg-gray-50/40 dark:bg-xcard/30">
+        <div class="mb-2 flex items-center justify-between">
+          <input id="post-title" type="text" placeholder="タイトル（任意・長文ノート用）" class="w-full bg-transparent text-sm font-bold placeholder-gray-500 outline-none">
+          <span id="editing-badge" class="hidden text-xs bg-amber-500/20 text-amber-400 px-2.5 py-0.5 rounded-full font-bold whitespace-nowrap">編集中</span>
+        </div>
+
+        <!-- ブロック一覧（文章とメディアを交互に差し込める領域） -->
+        <div id="editor-blocks" class="space-y-3"></div>
+
+        <!-- エディタ下部ツールバー -->
+        <div class="mt-3 pt-3 border-t border-gray-200 dark:border-xborder flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-1">
+            <!-- 写真挿入（自動圧縮） -->
+            <label class="cursor-pointer p-2 rounded-full hover:bg-xblue/10 text-xblue transition flex items-center gap-1 text-xs font-bold" title="カーソル位置に写真を挿入（自動軽量化）">
+              <i data-lucide="image-plus" class="w-4 h-4"></i>
+              <span>写真挿入</span>
+              <input id="photo-input" type="file" accept="image/*" multiple class="hidden">
+            </label>
+
+            <!-- 動画・YouTube・外部リンク挿入 -->
+            <button onclick="insertUrlBlock()" class="p-2 rounded-full hover:bg-xblue/10 text-xblue transition flex items-center gap-1 text-xs font-bold" title="カーソル位置に動画URL・YouTube・画像URLを挿入">
+              <i data-lucide="video" class="w-4 h-4"></i>
+              <span>動画/URL挿入</span>
+            </button>
+
+            <!-- テキスト段落追加 -->
+            <button onclick="addTextBlock()" class="p-2 rounded-full hover:bg-xblue/10 text-xblue transition flex items-center gap-1 text-xs font-bold">
+              <i data-lucide="plus" class="w-4 h-4"></i>
+              <span>段落追加</span>
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span id="char-count" class="text-xs text-gray-400">0 文字（制限なし）</span>
+            <button id="cancel-edit-btn" onclick="resetEditor()" class="hidden px-3 py-1.5 rounded-full text-xs border border-gray-600 text-gray-300 hover:bg-gray-800">キャンセル</button>
+            <button id="submit-btn" onclick="savePost()" class="px-5 py-2 rounded-full bg-xblue hover:bg-sky-500 text-white font-bold text-xs transition shadow">
+              投稿する
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 投稿一覧フィード -->
+      <div id="feed-list" class="divide-y divide-gray-200 dark:divide-xborder"></div>
+    </main>
+
+    <!-- 右サイドバー（タグ一覧＆統計） -->
+    <aside class="hidden lg:block w-72 p-4 space-y-4 sticky top-0 h-screen overflow-y-auto">
+      <div class="bg-gray-100 dark:bg-xcard rounded-2xl p-4 border border-gray-200 dark:border-xborder">
+        <h3 class="font-bold text-sm mb-3 flex items-center gap-1.5">
+          <i data-lucide="hash" class="w-4 h-4 text-xblue"></i> ハッシュタグ一覧
+        </h3>
+        <div id="tag-list" class="flex flex-wrap gap-1.5 text-xs text-gray-400">
+          タグ付きの投稿（#日記 など）を書くとここに自動集計されます
+        </div>
+      </div>
+      <div class="bg-gray-100 dark:bg-xcard rounded-2xl p-4 border border-gray-200 dark:border-xborder text-xs text-gray-400 space-y-1.5">
+        <div class="font-bold text-gray-200 mb-1">💡 使い方のコツ</div>
+        <p>・文章の途中で「写真挿入」や「動画/URL挿入」を押すと、カーソル位置で文章が自動分割されて好きな場所にメディアが挟まります。</p>
+        <p>・写真は自動でWebP/JPEG軽量化されるため、無料枠でも数千枚保存できます。</p>
+      </div>
+    </aside>
+  </div>
+
+  <!-- スマホ用下部ナビゲーション -->
+  <nav class="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 dark:bg-xdark/95 backdrop-blur border-t border-gray-200 dark:border-xborder flex justify-around py-2.5">
+    <button onclick="setFilter('all')" class="p-2 text-gray-300 hover:text-xblue"><i data-lucide="home" class="w-5 h-5"></i></button>
+    <button onclick="setFilter('bookmark')" class="p-2 text-gray-300 hover:text-xblue"><i data-lucide="bookmark" class="w-5 h-5"></i></button>
+    <button onclick="setFilter('media')" class="p-2 text-gray-300 hover:text-xblue"><i data-lucide="image" class="w-5 h-5"></i></button>
+    <button onclick="toggleTheme()" class="p-2 text-gray-300 hover:text-xblue"><i data-lucide="moon" class="w-5 h-5"></i></button>
+  </nav>
+
+  <!-- 画像拡大モーダル -->
+  <div id="lightbox" onclick="this.classList.add('hidden')" class="hidden fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 cursor-zoom-out">
+    <img id="lightbox-img" src="" class="max-w-full max-h-full rounded-lg object-contain">
+  </div>
+
+  <!-- Firebase Realtime Database & Auth (Modular SDK) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getDatabase, ref, set, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    // =========================================================================
+    // ★ここにFirebaseコンソールで取得した自分の firebaseConfig を貼り付けてください
+    // =========================================================================
+   const firebaseConfig = {
+  apiKey: "AIzaSyDHY8YRAmdJlGdB24inmnX5wmL4Ikt66bA",
+  authDomain: "my-x-note.firebaseapp.com",
+  databaseURL: "https://my-x-note-default-rtdb.firebaseio.com",
+  projectId: "my-x-note",
+  storageBucket: "my-x-note.firebasestorage.app",
+  messagingSenderId: "778175713960",
+  appId: "1:778175713960:web:3d5362414e42877ea1e89d"
+};
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+    const provider = new GoogleAuthProvider();
+
+    let currentUser = null;
+    let postsData = [];
+    let currentFilter = 'all';
+    let editingPostId = null;
+
+    // エディタ内のブロック状態＆カーソル追跡
+    let editorBlocks = [{ id: crypto.randomUUID(), type: 'text', content: '' }];
+    let activeBlockIndex = 0;
+    let activeCursorPos = 0;
+
+    // ログイン処理
+    document.getElementById('login-btn').addEventListener('click', async () => {
+      const errEl = document.getElementById('auth-error');
+      errEl.classList.add('hidden');
+      try {
+        await signInWithPopup(auth, provider);
+      } catch (err) {
+        errEl.textContent = "ログインエラー: " + err.message;
+        errEl.classList.remove('hidden');
+      }
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+
+    // 認証状態の監視＆Realtime Databaseのリアルタイム購読
+    onAuthStateChanged(auth, (user) => {
+      currentUser = user;
+      if (user) {
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('app-screen').classList.remove('hidden');
+        document.getElementById('user-email').textContent = user.email;
+
+        const postsRef = ref(db, `users/${user.uid}/posts`);
+        onValue(postsRef, (snapshot) => {
+          const val = snapshot.val() || {};
+          postsData = Object.entries(val).map(([id, item]) => ({ id, ...item }));
+          postsData.sort((a, b) => {
+            if (!!b.pinned !== !!a.pinned) return b.pinned ? 1 : -1;
+            return (b.createdAt || 0) - (a.createdAt || 0);
+          });
+          renderFeed();
+          renderTags();
+        });
+      } else {
+        document.getElementById('login-screen').classList.remove('hidden');
+        document.getElementById('app-screen').classList.add('hidden');
+      }
+    });
+
+    // エディタ描画
+    window.renderEditor = function() {
+      const container = document.getElementById('editor-blocks');
+      container.innerHTML = '';
+
+      editorBlocks.forEach((block, idx) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = "relative group bg-white dark:bg-xdark border border-gray-200 dark:border-xborder rounded-xl p-2.5";
+
+        // ブロック操作バー（上下移動・削除）
+        const controls = `
+          <div class="flex items-center justify-between text-[11px] text-gray-400 mb-1">
+            <span>${block.type === 'text' ? '📝 テキスト段落' : block.type === 'image' ? '🖼️ 写真' : '🎬 動画 / 埋込URL'}</span>
+            <div class="flex items-center gap-1">
+              <button onclick="moveBlock(${idx}, -1)" class="px-1.5 py-0.5 hover:bg-gray-800 rounded">↑</button>
+              <button onclick="moveBlock(${idx}, 1)" class="px-1.5 py-0.5 hover:bg-gray-800 rounded">↓</button>
+              <button onclick="removeBlock(${idx})" class="px-1.5 py-0.5 text-red-400 hover:bg-red-500/10 rounded">削除</button>
+            </div>
+          </div>
+        `;
+
+        if (block.type === 'text') {
+          wrapper.innerHTML = controls;
+          const ta = document.createElement('textarea');
+          ta.className = "w-full bg-transparent outline-none text-sm leading-relaxed resize-none min-h-[70px]";
+          ta.placeholder = "ここに文章を入力（カーソル位置に写真や動画を差し込めます）...";
+          ta.value = block.content;
+          ta.addEventListener('input', (e) => {
+            editorBlocks[idx].content = e.target.value;
+            activeBlockIndex = idx;
+            activeCursorPos = e.target.selectionStart || e.target.value.length;
+            updateCharCount();
+          });
+          ta.addEventListener('click', (e) => {
+            activeBlockIndex = idx;
+            activeCursorPos = e.target.selectionStart || 0;
+          });
+          ta.addEventListener('keyup', (e) => {
+            activeBlockIndex = idx;
+            activeCursorPos = e.target.selectionStart || 0;
+          });
+          wrapper.appendChild(ta);
+        } else if (block.type === 'image') {
+          wrapper.innerHTML = controls + `
+            <img src="${block.url}" class="max-h-72 rounded-lg object-contain mx-auto my-1">
+            <input type="text" placeholder="写真のキャプション（任意）" value="${block.caption || ''}"
+              oninput="updateBlockCaption(${idx}, this.value)"
+              class="w-full mt-1 bg-transparent text-xs text-gray-400 border-b border-transparent focus:border-xborder outline-none">
+          `;
+        } else if (block.type === 'embed') {
+          wrapper.innerHTML = controls + renderMediaHtml(block.url) + `
+            <input type="text" placeholder="キャプション（任意）" value="${block.caption || ''}"
+              oninput="updateBlockCaption(${idx}, this.value)"
+              class="w-full mt-1 bg-transparent text-xs text-gray-400 border-b border-transparent focus:border-xborder outline-none">
+          `;
+        }
+
+        container.appendChild(wrapper);
+      });
+
+      updateCharCount();
+      lucide.createIcons();
+    };
+
+    function updateCharCount() {
+      const total = editorBlocks
+        .filter(b => b.type === 'text')
+        .reduce((sum, b) => sum + (b.content ? b.content.length : 0), 0);
+      document.getElementById('char-count').textContent = `${total.toLocaleString()} 文字（制限なし）`;
+    }
+
+    // カーソル位置でテキストを前後に分割してメディアブロックを差し込む関数
+    function insertBlockAtCursor(mediaBlock) {
+      const target = editorBlocks[activeBlockIndex];
+      if (target && target.type === 'text') {
+        const text = target.content || '';
+        const before = text.slice(0, activeCursorPos);
+        const after = text.slice(activeCursorPos);
+        const newBlocks = [];
+        if (before.length > 0) {
+          newBlocks.push({ id: crypto.randomUUID(), type: 'text', content: before });
+        }
+        newBlocks.push(mediaBlock);
+        newBlocks.push({ id: crypto.randomUUID(), type: 'text', content: after });
+        editorBlocks.splice(activeBlockIndex, 1, ...newBlocks);
+        activeBlockIndex = Math.min(activeBlockIndex + 2, editorBlocks.length - 1);
+      } else {
+        editorBlocks.push(mediaBlock);
+        editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: '' });
+      }
+      renderEditor();
+    }
+
+    // 写真の自動圧縮（WebP/JPEG 長辺1200px）処理
+    async function compressImage(file) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const maxDim = 1200;
+            let w = img.width, h = img.height;
+            if (w > maxDim || h > maxDim) {
+              if (w > h) { h = Math.round(h * (maxDim / w)); w = maxDim; }
+              else { w = Math.round(w * (maxDim / h)); h = maxDim; }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/webp', 0.8));
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    document.getElementById('photo-input').addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files || []);
+      for (const file of files) {
+        const dataUrl = await compressImage(file);
+        insertBlockAtCursor({ id: crypto.randomUUID(), type: 'image', url: dataUrl, caption: '' });
+      }
+      e.target.value = '';
+    });
+
+    window.insertUrlBlock = function() {
+      const url = prompt("挿入したい動画URL（YouTube限定公開URL・mp4直リンク・画像URLなど）を入力してください:");
+      if (!url || !url.trim()) return;
+      insertBlockAtCursor({ id: crypto.randomUUID(), type: 'embed', url: url.trim(), caption: '' });
+    };
+
+    window.addTextBlock = function() {
+      editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: '' });
+      activeBlockIndex = editorBlocks.length - 1;
+      renderEditor();
+    };
+
+    window.moveBlock = function(idx, dir) {
+      const target = idx + dir;
+      if (target < 0 || target >= editorBlocks.length) return;
+      const temp = editorBlocks[idx];
+      editorBlocks[idx] = editorBlocks[target];
+      editorBlocks[target] = temp;
+      renderEditor();
+    };
+
+    window.removeBlock = function(idx) {
+      editorBlocks.splice(idx, 1);
+      if (editorBlocks.length === 0) {
+        editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: '' });
+      }
+      renderEditor();
+    };
+
+    window.updateBlockCaption = function(idx, val) {
+      if (editorBlocks[idx]) editorBlocks[idx].caption = val;
+    };
+
+    window.resetEditor = function() {
+      editingPostId = null;
+      document.getElementById('post-title').value = '';
+      document.getElementById('editing-badge').classList.add('hidden');
+      document.getElementById('cancel-edit-btn').classList.add('hidden');
+      document.getElementById('submit-btn').textContent = '投稿する';
+      editorBlocks = [{ id: crypto.randomUUID(), type: 'text', content: '' }];
+      activeBlockIndex = 0;
+      renderEditor();
+    };
+
+    // 投稿の保存（Realtime Databaseへ書き込み）
+    window.savePost = async function() {
+      if (!currentUser) return;
+      const title = document.getElementById('post-title').value.trim();
+      const cleanedBlocks = editorBlocks.filter(b => b.type !== 'text' || (b.content && b.content.trim().length > 0));
+      if (!title && cleanedBlocks.length === 0) return;
+
+      const payload = {
+        title,
+        blocks: cleanedBlocks,
+        updatedAt: Date.now()
+      };
+
+      if (editingPostId) {
+        await update(ref(db, `users/${currentUser.uid}/posts/${editingPostId}`), payload);
+      } else {
+        const newRef = push(ref(db, `users/${currentUser.uid}/posts`));
+        await set(newRef, { ...payload, createdAt: Date.now(), pinned: false, bookmarked: false });
+      }
+      resetEditor();
+    };
+
+    // YouTubeや動画URLの判定と埋め込みHTML生成
+    function renderMediaHtml(url) {
+      const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]{11})/);
+      if (ytMatch) {
+        return `<div class="aspect-video w-full rounded-xl overflow-hidden my-2 border border-xborder">
+          <iframe src="https://www.youtube.com/embed/${ytMatch[1]}" class="w-full h-full" allowfullscreen></iframe>
+        </div>`;
+      }
+      if (/\.(mp4|webm|ogg|mov)(\?|$)/i.test(url)) {
+        return `<video src="${url}" controls class="w-full max-h-96 rounded-xl my-2 bg-black"></video>`;
+      }
+      return `<img src="${url}" onclick="openLightbox('${url}')" class="max-h-96 rounded-xl object-contain my-2 cursor-zoom-in">`;
+    }
+
+    // タイムライン描画
+    function renderFeed() {
+      const list = document.getElementById('feed-list');
+      const query = document.getElementById('search-input').value.trim().toLowerCase();
+      list.innerHTML = '';
+
+      const filtered = postsData.filter(post => {
+        if (currentFilter === 'bookmark' && !post.bookmarked) return false;
+        if (currentFilter === 'media' && !(post.blocks || []).some(b => b.type !== 'text')) return false;
+        if (query) {
+          const allText = ((post.title || '') + ' ' + (post.blocks || []).map(b => b.content || b.caption || '').join(' ')).toLowerCase();
+          return allText.includes(query);
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        list.innerHTML = `<div class="p-12 text-center text-sm text-gray-500">投稿がありません</div>`;
+        return;
+      }
+
+      filtered.forEach(post => {
+        const el = document.createElement('article');
+        el.className = "p-4 hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition";
+        const dateStr = new Date(post.createdAt || Date.now()).toLocaleString('ja-JP');
+
+        const blocksHtml = (post.blocks || []).map(b => {
+          if (b.type === 'text') {
+            const escaped = (b.content || '')
+              .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+              .replace(/(#[^\s#]+)/g, '<span onclick="filterByTag(\'$1\')" class="text-xblue hover:underline cursor-pointer">$1</span>');
+            return `<p class="whitespace-pre-wrap text-[15px] leading-relaxed my-2">${escaped}</p>`;
+          }
+          if (b.type === 'image') {
+            return `<figure class="my-2">
+              <img src="${b.url}" onclick="openLightbox('${b.url}')" class="max-h-96 rounded-2xl border border-gray-200 dark:border-xborder object-contain cursor-zoom-in">
+              ${b.caption ? `<figcaption class="text-xs text-gray-400 mt-1">${b.caption}</figcaption>` : ''}
+            </figure>`;
+          }
+          if (b.type === 'embed') {
+            return `<div class="my-2">${renderMediaHtml(b.url)}
+              ${b.caption ? `<div class="text-xs text-gray-400 mt-1">${b.caption}</div>` : ''}
+            </div>`;
+          }
+          return '';
+        }).join('');
+
+        el.innerHTML = `
+          <div class="flex items-center justify-between text-xs text-gray-400 mb-1.5">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-gray-900 dark:text-white">Personal Note</span>
+              <span>· ${dateStr}</span>
+              ${post.pinned ? '<span class="text-xblue font-bold">📌 固定</span>' : ''}
+            </div>
+            <div class="flex items-center gap-3">
+              <button onclick="togglePin('${post.id}', ${!!post.pinned})" class="hover:text-xblue" title="ピン留め">📌</button>
+              <button onclick="toggleBookmark('${post.id}', ${!!post.bookmarked})" class="hover:text-amber-400" title="ブックマーク">${post.bookmarked ? '★' : '☆'}</button>
+              <button onclick="startEdit('${post.id}')" class="hover:text-xblue">編集</button>
+              <button onclick="deletePost('${post.id}')" class="hover:text-red-400">削除</button>
+            </div>
+          </div>
+          ${post.title ? `<h3 class="font-bold text-base mb-2">${post.title}</h3>` : ''}
+          <div>${blocksHtml}</div>
+        `;
+        list.appendChild(el);
+      });
+    }
+
+    function renderTags() {
+      const tagCounts = {};
+      postsData.forEach(p => {
+        (p.blocks || []).forEach(b => {
+          if (b.type === 'text' && b.content) {
+            const matches = b.content.match(/#[^\s#]+/g) || [];
+            matches.forEach(t => { tagCounts[t] = (tagCounts[t] || 0) + 1; });
+          }
+        });
+      });
+      const container = document.getElementById('tag-list');
+      const entries = Object.entries(tagCounts);
+      if (entries.length === 0) return;
+      container.innerHTML = entries.map(([tag, count]) =>
+        `<button onclick="filterByTag('${tag}')" class="px-2.5 py-1 rounded-full bg-xblue/10 text-xblue hover:bg-xblue/20 font-bold">${tag} (${count})</button>`
+      ).join('');
+    }
+
+    window.filterByTag = function(tag) {
+      document.getElementById('search-input').value = tag;
+      renderFeed();
+    };
+
+    window.setFilter = function(f) {
+      currentFilter = f;
+      document.getElementById('header-title').textContent =
+        f === 'all' ? 'タイムライン' : f === 'bookmark' ? 'ブックマーク' : 'メディア付き';
+      renderFeed();
+    };
+
+    window.togglePin = (id, cur) => update(ref(db, `users/${currentUser.uid}/posts/${id}`), { pinned: !cur });
+    window.toggleBookmark = (id, cur) => update(ref(db, `users/${currentUser.uid}/posts/${id}`), { bookmarked: !cur });
+    window.deletePost = (id) => { if (confirm('このノートを削除しますか？')) remove(ref(db, `users/${currentUser.uid}/posts/${id}`)); };
+
+    window.startEdit = function(id) {
+      const post = postsData.find(p => p.id === id);
+      if (!post) return;
+      editingPostId = id;
+      document.getElementById('post-title').value = post.title || '';
+      editorBlocks = JSON.parse(JSON.stringify(post.blocks || [{ id: crypto.randomUUID(), type: 'text', content: '' }]));
+      document.getElementById('editing-badge').classList.remove('hidden');
+      document.getElementById('cancel-edit-btn').classList.remove('hidden');
+      document.getElementById('submit-btn').textContent = '更新する';
+      renderEditor();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    window.openLightbox = function(url) {
+      document.getElementById('lightbox-img').src = url;
+      document.getElementById('lightbox').classList.remove('hidden');
+    };
+
+    window.toggleTheme = function() {
+      document.documentElement.classList.toggle('dark');
+    };
+
+    document.getElementById('search-input').addEventListener('input', renderFeed);
+
+    renderEditor();
+    lucide.createIcons();
+  </script>
+</body>
+</html>
