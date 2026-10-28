@@ -164,7 +164,7 @@
         <div id="category-tabs" class="flex items-center overflow-x-auto border-t theme-border text-xs font-bold no-scrollbar"></div>
       </header>
 
-      <!-- モード切替バナー（ブックマークやメディア表示時にホームと明確に区別するバー） -->
+      <!-- モード切替バナー -->
       <div id="filter-banner" class="hidden px-4 py-3 border-b theme-border flex items-center justify-between bg-sky-500/10">
         <div class="flex items-center gap-2.5">
           <div id="filter-banner-icon" class="w-8 h-8 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center"></div>
@@ -220,8 +220,8 @@
         <div class="font-bold text-white flex items-center gap-1.5">
           <i data-lucide="zap" class="w-4 h-4 theme-accent-text"></i> 便利機能
         </div>
-        <p>・<b>スクショ直貼り：</b>投稿ウィンドウで <code class="px-1 py-0.5 bg-white/10 rounded">Ctrl + V</code> を押すと、クリップボードの画像をカーソル位置に直接差し込めます。</p>
-        <p>・<b>長文自動折りたたみ：</b>長い文章は自動で折りたたまれ、「さらに表示」で開閉できます。</p>
+        <p>・<b>URLリンクカード：</b>本文にURLを貼るか「動画/URL」から追加すると、タップでそのサイトを開けます。</p>
+        <p>・<b>スクショ直貼り：</b>投稿ウィンドウで <code class="px-1 py-0.5 bg-white/10 rounded">Ctrl + V</code> を押すと、クリップボードの画像を直接差し込めます。</p>
       </div>
     </aside>
   </div>
@@ -274,7 +274,7 @@
             <input id="photo-input" type="file" accept="image/*" multiple class="hidden">
           </label>
           <button onclick="insertUrlBlock()" class="p-2 rounded-full hover:bg-white/10 theme-accent-text transition flex items-center gap-1 text-xs font-bold">
-            <i data-lucide="video" class="w-4 h-4"></i>
+            <i data-lucide="link" class="w-4 h-4"></i>
             <span>動画/URL</span>
           </button>
           <button onclick="addTextBlock()" class="p-2 rounded-full hover:bg-white/10 theme-accent-text transition flex items-center gap-1 text-xs font-bold">
@@ -390,7 +390,7 @@
   </div>
 
   <!-- ========================================================================= -->
-  <!-- 4. カテゴリー（タブ）管理モーダル（名前変更・並び替え・削除対応） -->
+  <!-- 4. カテゴリー（タブ）管理モーダル -->
   <!-- ========================================================================= -->
   <div id="category-modal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="w-full max-w-md theme-card border theme-border rounded-2xl p-5 space-y-4">
@@ -446,7 +446,6 @@
     let editingPostId = null;
     let replyParentId = null;
 
-    // 展開済みの長文ポストIDを保持するSet
     const expandedPostIds = new Set();
 
     let profileData = {
@@ -469,7 +468,6 @@
     let activeBlockIndex = 0;
     let activeCursorPos = 0;
 
-    // ログイン・ログアウト
     document.getElementById('login-btn').addEventListener('click', async () => {
       try { await signInWithPopup(auth, provider); }
       catch (err) {
@@ -480,7 +478,6 @@
     });
     document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 
-    // 認証監視＆データ購読
     onAuthStateChanged(auth, (user) => {
       currentUser = user;
       if (!user) {
@@ -566,9 +563,6 @@
       if (currentUser) set(ref(db, `users/${currentUser.uid}/settings`), themeSettings);
     };
 
-    // =========================================================================
-    // カテゴリー描画・名前変更・並び替え・削除
-    // =========================================================================
     function renderCategories() {
       const tabBar = document.getElementById('category-tabs');
       const selectEl = document.getElementById('post-category');
@@ -616,7 +610,6 @@
       renderCategories();
     };
 
-    // ★ カテゴリー名の変更（既存投稿のカテゴリー名も一括更新）
     window.renameCategory = async function(oldName) {
       const newName = prompt(`「${oldName}」の新しいタブ名を入力してください:`, oldName);
       if (!newName || !newName.trim() || newName.trim() === oldName) return;
@@ -645,7 +638,6 @@
       renderFeed();
     };
 
-    // カテゴリーの並び替え
     window.moveCategory = function(userCatIdx, dir) {
       const userCats = categories.filter(c => c !== 'すべて');
       const target = userCatIdx + dir;
@@ -665,9 +657,6 @@
       renderFeed();
     };
 
-    // =========================================================================
-    // ホーム / ブックマーク / メディア の視覚的な区別（ヘッダー＆バナー切替）
-    // =========================================================================
     function updateNavigationUI() {
       const filters = ['all', 'bookmark', 'media'];
       filters.forEach(f => {
@@ -723,7 +712,7 @@
 
         document.getElementById('filter-banner-icon').innerHTML = `<i data-lucide="image" class="w-4 h-4"></i>`;
         document.getElementById('filter-banner-title').textContent = `メディア付きポスト一覧（${count} 件）`;
-        document.getElementById('filter-banner-desc').textContent = '写真や動画が含まれるポストのみを表示しています';
+        document.getElementById('filter-banner-desc').textContent = '写真や動画・リンクが含まれるポストのみを表示しています';
       }
       lucide.createIcons();
     }
@@ -735,7 +724,6 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    // モーダル開閉処理
     window.openPostModal = function(parentId = null) {
       editingPostId = null;
       replyParentId = parentId;
@@ -778,7 +766,6 @@
     window.openCategoryModal = () => document.getElementById('category-modal').classList.remove('hidden');
     window.closeCategoryModal = () => document.getElementById('category-modal').classList.add('hidden');
 
-    // プロフィール保存
     window.saveProfile = async function() {
       const avatarFile = document.getElementById('avatar-file').files[0];
       const bannerFile = document.getElementById('banner-file').files[0];
@@ -794,7 +781,6 @@
       closeProfileModal();
     };
 
-    // エディタ描画
     window.renderEditor = function() {
       const container = document.getElementById('editor-blocks');
       container.innerHTML = '';
@@ -805,7 +791,7 @@
 
         const controls = `
           <div class="flex items-center justify-between text-[11px] theme-sub mb-1">
-            <span>${block.type === 'text' ? 'テキスト段落' : block.type === 'image' ? '写真' : '動画 / URL'}</span>
+            <span>${block.type === 'text' ? 'テキスト段落' : block.type === 'image' ? '写真' : '動画 / Webリンク'}</span>
             <div class="flex items-center gap-1">
               <button onclick="moveBlock(${idx}, -1)" class="px-1.5 py-0.5 hover:bg-white/10 rounded">↑</button>
               <button onclick="moveBlock(${idx}, 1)" class="px-1.5 py-0.5 hover:bg-white/10 rounded">↓</button>
@@ -818,7 +804,7 @@
           wrapper.innerHTML = controls;
           const ta = document.createElement('textarea');
           ta.className = "w-full bg-transparent outline-none text-sm leading-relaxed resize-none min-h-[85px]";
-          ta.placeholder = "いまどうしてる？（スクショを Ctrl+V で直接ここに貼り付けられます）";
+          ta.placeholder = "いまどうしてる？（URLを貼ると自動でリンクになります / スクショ Ctrl+V 対応）";
           ta.value = block.content;
           ta.addEventListener('input', (e) => {
             editorBlocks[idx].content = e.target.value;
@@ -844,7 +830,7 @@
           `;
         } else if (block.type === 'embed') {
           wrapper.innerHTML = controls + renderMediaHtml(block.url) + `
-            <input type="text" placeholder="キャプション（任意）" value="${block.caption || ''}"
+            <input type="text" placeholder="キャプション・メモ（任意）" value="${block.caption || ''}"
               oninput="updateBlockCaption(${idx}, this.value)"
               class="w-full mt-1 bg-transparent text-xs theme-sub border-b border-transparent focus:border-gray-600 outline-none">
           `;
@@ -931,9 +917,13 @@
     });
 
     window.insertUrlBlock = function() {
-      const url = prompt("挿入したい動画URL（YouTube URL・mp4直リンク・画像URL）を入力してください:");
+      const url = prompt("挿入したいURL（Webサイト・YouTube・動画mp4・画像URL）を入力してください:");
       if (!url || !url.trim()) return;
-      insertBlockAtCursor({ id: crypto.randomUUID(), type: 'embed', url: url.trim(), caption: '' });
+      let formatted = url.trim();
+      if (!/^https?:\/\//i.test(formatted) && !formatted.startsWith('data:')) {
+        formatted = 'https://' + formatted;
+      }
+      insertBlockAtCursor({ id: crypto.randomUUID(), type: 'embed', url: formatted, caption: '' });
     };
 
     window.addTextBlock = function() {
@@ -988,20 +978,44 @@
       closePostModal();
     };
 
+    // ★ URLの種類（YouTube / 動画 / 画像 / 一般Webサイト）を自動判別して表示
     function renderMediaHtml(url) {
-      const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]{11})/);
+      const safeUrl = (url || '').trim();
+      // 1. YouTube
+      const ytMatch = safeUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]{11})/);
       if (ytMatch) {
         return `<div class="aspect-video w-full rounded-xl overflow-hidden my-2 border theme-border">
           <iframe src="https://www.youtube.com/embed/${ytMatch[1]}" class="w-full h-full" allowfullscreen></iframe>
         </div>`;
       }
-      if (/\.(mp4|webm|ogg|mov)(\?|$)/i.test(url)) {
-        return `<video src="${url}" controls class="w-full max-h-96 rounded-xl my-2 bg-black"></video>`;
+      // 2. 動画直リンク
+      if (/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(safeUrl)) {
+        return `<video src="${safeUrl}" controls class="w-full max-h-96 rounded-xl my-2 bg-black"></video>`;
       }
-      return `<img src="${url}" onclick="openLightbox('${url}')" class="max-h-96 rounded-xl object-contain my-2 cursor-zoom-in">`;
+      // 3. 画像直リンク
+      if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|avif)(\?.*)?$/i.test(safeUrl) || safeUrl.startsWith('data:image/')) {
+        return `<img src="${safeUrl}" onclick="openLightbox('${safeUrl}')" class="max-h-96 rounded-xl object-contain my-2 cursor-zoom-in">`;
+      }
+      // 4. 一般のWebサイトURL → X風リンクカードとして表示（クリックで新規タブで開く）
+      let hostname = safeUrl;
+      try { hostname = new URL(safeUrl).hostname; } catch (e) {}
+      const favicon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=64`;
+      return `
+        <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="block my-2 p-3.5 rounded-2xl border theme-border theme-card hover:bg-white/[0.04] transition group">
+          <div class="flex items-center gap-3">
+            <img src="${favicon}" class="w-9 h-9 rounded-lg bg-white/10 p-1.5 object-contain shrink-0" onerror="this.style.display='none'">
+            <div class="min-w-0 flex-1">
+              <div class="text-xs theme-sub truncate flex items-center gap-1">
+                <span>🔗 ${hostname}</span>
+              </div>
+              <div class="text-sm font-bold theme-accent-text group-hover:underline truncate mt-0.5">${safeUrl}</div>
+            </div>
+            <span class="text-xs theme-sub group-hover:text-white shrink-0">↗</span>
+          </div>
+        </a>
+      `;
     }
 
-    // 長文の「さらに表示 / 折りたたむ」切替
     window.toggleExpandPost = function(id) {
       if (expandedPostIds.has(id)) {
         expandedPostIds.delete(id);
@@ -1011,7 +1025,6 @@
       renderFeed();
     };
 
-    // 単一ポストのHTML生成（本家X風の控えめなSVGアイコン＆長文折りたたみ対応）
     function buildPostItemHtml(post, isChild = false, hasNextSibling = false, replyCount = 0) {
       const dateStr = new Date(post.createdAt || Date.now()).toLocaleString('ja-JP', {
         month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -1030,7 +1043,8 @@
         if (b.type === 'text') {
           const escaped = (b.content || '')
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-            .replace(/(#[^\s#]+)/g, '<span onclick="filterByTag(\'$1\')" class="theme-accent-text hover:underline cursor-pointer">$1</span>');
+            .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="theme-accent-text hover:underline break-all">$1</a>')
+            .replace(/(^|\s)(#[^\s#<]+)/g, '$1<span onclick="filterByTag(\'$2\')" class="theme-accent-text hover:underline cursor-pointer">$2</span>');
           return `<p class="whitespace-pre-wrap post-text my-1">${escaped}</p>`;
         }
         if (b.type === 'image') {
@@ -1074,7 +1088,6 @@
 
             ${post.title ? `<h3 class="font-bold text-base mb-1">${post.title}</h3>` : ''}
 
-            <!-- 本文領域（長文時は自動折りたたみ） -->
             <div class="${shouldCollapse ? 'post-collapsed' : ''}">
               ${blocksHtml}
             </div>
@@ -1085,10 +1098,7 @@
               </button>
             ` : ''}
 
-            <!-- 本家X風の控えめなSVGアイコンアクションバー -->
             <div class="flex items-center justify-between max-w-md mt-2 -ml-2 text-xs theme-sub select-none">
-              
-              <!-- スレッド返信（吹き出しアイコン） -->
               <button onclick="openPostModal('${targetThreadId}')" class="group flex items-center gap-1 hover:text-sky-400 transition" title="スレッドに追記">
                 <div class="p-2 rounded-full group-hover:bg-sky-500/10 transition">
                   <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -1098,7 +1108,6 @@
                 ${!isChild && replyCount > 0 ? `<span class="text-xs">${replyCount}</span>` : ''}
               </button>
 
-              <!-- ブックマーク（リボンアイコン） -->
               <button onclick="toggleBookmark('${post.id}', ${!!post.bookmarked})" class="group flex items-center gap-1 ${post.bookmarked ? 'text-sky-400' : 'hover:text-sky-400'} transition" title="ブックマーク">
                 <div class="p-2 rounded-full group-hover:bg-sky-500/10 transition">
                   <svg class="w-[18px] h-[18px]" fill="${post.bookmarked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -1107,7 +1116,6 @@
                 </div>
               </button>
 
-              <!-- ピン留め -->
               ${!isChild ? `
                 <button onclick="togglePin('${post.id}', ${!!post.pinned})" class="group flex items-center gap-1 ${post.pinned ? 'text-emerald-400' : 'hover:text-emerald-400'} transition" title="プロフィールに固定">
                   <div class="p-2 rounded-full group-hover:bg-emerald-500/10 transition">
@@ -1118,7 +1126,6 @@
                 </button>
               ` : ''}
 
-              <!-- 編集（ペンアイコン） -->
               <button onclick="startEdit('${post.id}')" class="group flex items-center gap-1 hover:text-sky-400 transition" title="編集">
                 <div class="p-2 rounded-full group-hover:bg-sky-500/10 transition">
                   <svg class="w-[17px] h-[17px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -1127,7 +1134,6 @@
                 </div>
               </button>
 
-              <!-- 削除（ゴミ箱アイコン） -->
               <button onclick="deletePost('${post.id}')" class="group flex items-center gap-1 hover:text-red-400 transition" title="削除">
                 <div class="p-2 rounded-full group-hover:bg-red-500/10 transition">
                   <svg class="w-[17px] h-[17px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -1135,14 +1141,12 @@
                   </svg>
                 </div>
               </button>
-
             </div>
           </div>
         </div>
       `;
     }
 
-    // タイムライン＆スレッドツリー描画
     function renderFeed() {
       const list = document.getElementById('feed-list');
       const query = document.getElementById('search-input').value.trim().toLowerCase();
