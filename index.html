@@ -3,67 +3,73 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>X-Note Personal Pro</title>
+  <title>𝕏 - Personal Note</title>
   
+  <!-- X風のファビコン（SVG Data URI） -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23000000'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='central' text-anchor='middle' fill='%23ffffff' font-family='sans-serif' font-weight='900' font-size='68'%3E%F0%9D%95%8F%3C/text%3E%3C/svg%3E">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23000000'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='central' text-anchor='middle' fill='%23ffffff' font-family='sans-serif' font-weight='900' font-size='68'%3E%F0%9D%95%8F%3C/text%3E%3C/svg%3E">
+  
+  <!-- PWA用設定 -->
   <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="X-Note">
   
+  <!-- Tailwind CSS & Lucide Icons -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: { xdark: '#000000', xcard: '#16181c', xborder: '#2f3336' }
-        }
-      }
-    }
-  </script>
+  
   <style>
     :root {
+      --bg-main: #000000;
+      --bg-card: #16181c;
+      --bg-hover: rgba(255, 255, 255, 0.03);
+      --text-main: #e7e9ea;
+      --text-sub: #71767b;
+      --border-color: #2f3336;
       --accent: #1d9bf0;
       --post-font-size: 15px;
-      --post-line-height: 1.65;
+      --post-line-height: 1.6;
       --post-padding: 16px;
     }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .theme-card { background-color: var(--bg-card); }
+    .theme-border { border-color: var(--border-color); }
+    .theme-sub { color: var(--text-sub); }
+    .theme-accent-bg { background-color: var(--accent); }
+    .theme-accent-text { color: var(--accent); }
+    .theme-accent-border { border-color: var(--accent); }
+    .post-text {
+      font-size: var(--post-font-size);
+      line-height: var(--post-line-height);
+    }
+    .post-card-pad {
+      padding: var(--post-padding);
+    }
     textarea { field-sizing: content; }
-    .accent-bg { background-color: var(--accent); }
-    .accent-text { color: var(--accent); }
-    .accent-border { border-color: var(--accent); }
-    .post-content-text { font-size: var(--post-font-size); line-height: var(--post-line-height); }
-    .post-card-pad { padding: var(--post-padding); }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #2f3336; border-radius: 3px; }
   </style>
 </head>
-<body class="bg-white dark:bg-xdark text-gray-900 dark:text-gray-100 min-h-screen">
+<body class="min-h-screen selection:bg-sky-500 selection:text-white">
 
-  <!-- パスワード（PIN）ロック画面 -->
-  <div id="pin-lock-screen" class="hidden fixed inset-0 z-50 bg-xdark flex flex-col items-center justify-center p-6">
-    <div class="w-full max-w-sm bg-xcard border border-xborder rounded-2xl p-8 text-center shadow-2xl space-y-4">
-      <div class="w-14 h-14 rounded-2xl bg-white/5 border border-xborder flex items-center justify-center mx-auto text-white font-black text-2xl">🔒</div>
-      <h1 class="text-lg font-bold text-white">セキュリティロック</h1>
-      <p class="text-xs text-gray-400">PINコードを入力してください</p>
-      <input id="pin-input" type="password" maxlength="6" class="w-36 mx-auto text-center tracking-widest text-xl bg-black border border-xborder rounded-xl py-2 outline-none">
-      <button onclick="verifyPin()" class="w-full py-2.5 bg-white text-black font-bold rounded-full text-xs">解除する</button>
-      <p id="pin-error" class="text-xs text-red-400 hidden">PINが違います</p>
-    </div>
-  </div>
-
-  <!-- 未ログイン時のログイン画面 -->
-  <div id="login-screen" class="fixed inset-0 z-50 bg-xdark flex flex-col items-center justify-center p-6">
-    <div class="w-full max-w-sm bg-xcard border border-xborder rounded-2xl p-8 text-center shadow-2xl">
-      <div class="w-14 h-14 rounded-2xl bg-white/5 border border-xborder flex items-center justify-center mx-auto mb-4 text-white font-black text-3xl">𝕏</div>
+  <!-- 未ログイン時のロック画面 -->
+  <div id="login-screen" class="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-6">
+    <div class="w-full max-w-sm bg-[#16181c] border border-[#2f3336] rounded-2xl p-8 text-center shadow-2xl">
+      <div class="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-4 text-white font-black text-4xl">
+        𝕏
+      </div>
       <h1 class="text-xl font-bold text-white mb-2">X-Note Personal</h1>
-      <p class="text-xs text-gray-400 mb-6">自分専用の長文・メディア同期アプリ</p>
+      <p class="text-xs text-gray-400 mb-6">自分専用の長文・スレッド・メディア同期ノート</p>
       <button id="login-btn" class="w-full py-3 px-4 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition flex items-center justify-center gap-2">
-        <i data-lucide="log-in" class="w-4 h-4"></i> Googleでログイン
+        <i data-lucide="log-in" class="w-4 h-4"></i>
+        Googleでログイン
       </button>
       <p id="auth-error" class="text-xs text-red-400 mt-4 hidden"></p>
     </div>
@@ -72,240 +78,315 @@
   <!-- メイン画面 -->
   <div id="app-screen" class="hidden max-w-6xl mx-auto min-h-screen flex">
     
-    <!-- 左サイドバー -->
-    <aside class="hidden md:flex flex-col w-64 border-r border-gray-200 dark:border-xborder p-4 sticky top-0 h-screen justify-between">
-      <div class="space-y-1.5">
-        <div class="px-3 py-2 text-2xl font-black tracking-tighter flex items-center gap-2">
-          <span>𝕏</span><span class="text-sm font-bold text-gray-400">Personal Pro</span>
+    <!-- 左サイドバー（PC用） -->
+    <aside class="hidden md:flex flex-col w-64 border-r theme-border p-4 sticky top-0 h-screen justify-between shrink-0">
+      <div class="space-y-1">
+        <div class="px-3 py-2 text-3xl font-black tracking-tighter flex items-center gap-2">
+          <span>𝕏</span>
         </div>
-        <button onclick="setFilter('all')" id="nav-all" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-gray-100 dark:hover:bg-xcard font-bold transition">
+        <button onclick="setFilter('all')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 font-bold transition">
           <i data-lucide="home" class="w-5 h-5"></i> ホーム
         </button>
-        <button onclick="setFilter('like')" id="nav-like" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-gray-100 dark:hover:bg-xcard font-bold transition">
-          <i data-lucide="heart" class="w-5 h-5"></i> いいね
-        </button>
-        <button onclick="setFilter('bookmark')" id="nav-bookmark" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-gray-100 dark:hover:bg-xcard font-bold transition">
+        <button onclick="setFilter('bookmark')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 font-bold transition">
           <i data-lucide="bookmark" class="w-5 h-5"></i> ブックマーク
         </button>
-        <button onclick="setFilter('media')" id="nav-media" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-gray-100 dark:hover:bg-xcard font-bold transition">
-          <i data-lucide="image" class="w-5 h-5"></i> メディアギャラリー
+        <button onclick="setFilter('media')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 font-bold transition">
+          <i data-lucide="image" class="w-5 h-5"></i> メディア
         </button>
-        <button onclick="openModal('appearance-modal')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-gray-100 dark:hover:bg-xcard font-bold transition">
-          <i data-lucide="palette" class="w-5 h-5"></i> 設定・バックアップ
-        </button>
-        <button onclick="openModal('category-modal')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-gray-100 dark:hover:bg-xcard font-bold transition">
+        <button onclick="openCategoryModal()" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 font-bold transition">
           <i data-lucide="folder-kanban" class="w-5 h-5"></i> カテゴリー管理
         </button>
+        <button onclick="openProfileModal()" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 font-bold transition">
+          <i data-lucide="user" class="w-5 h-5"></i> プロフィール設定
+        </button>
+        <button onclick="openDisplayModal()" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 font-bold transition">
+          <i data-lucide="sliders" class="w-5 h-5"></i> 表示・文字・配色
+        </button>
+
         <div class="pt-4">
-          <button onclick="openComposer()" class="w-full py-3.5 rounded-full accent-bg text-white font-bold text-sm shadow-lg hover:opacity-90 transition flex items-center justify-center gap-2">
-            <i data-lucide="feather" class="w-4 h-4"></i> ポストする
+          <button onclick="openPostModal()" class="w-full py-3.5 rounded-full theme-accent-bg text-white font-bold text-base shadow-lg hover:opacity-90 transition flex items-center justify-center gap-2">
+            <i data-lucide="feather" class="w-5 h-5"></i>
+            <span>ポストする</span>
           </button>
         </div>
       </div>
 
-      <div class="border-t border-gray-200 dark:border-xborder pt-4 space-y-2">
-        <div class="px-2 flex items-center gap-2.5 cursor-pointer hover:bg-gray-100 dark:hover:bg-xcard p-2 rounded-full transition" onclick="openModal('profile-modal')">
-          <img id="sidebar-avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" class="w-9 h-9 rounded-full object-cover border border-xborder">
-          <div class="min-w-0 flex-1">
+      <div class="border-t theme-border pt-4 flex items-center justify-between px-2">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <img id="sidebar-avatar" src="" class="w-9 h-9 rounded-full object-cover border theme-border shrink-0">
+          <div class="min-w-0">
             <div id="sidebar-name" class="text-xs font-bold truncate">My Note</div>
-            <div id="user-email" class="text-[11px] text-gray-400 truncate"></div>
+            <div id="user-email" class="text-[11px] theme-sub truncate"></div>
           </div>
         </div>
-        <button id="logout-btn" class="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 rounded-full transition">
-          <i data-lucide="log-out" class="w-4 h-4"></i> ログアウト
+        <button id="logout-btn" class="p-2 text-red-400 hover:bg-red-500/10 rounded-full transition" title="ログアウト">
+          <i data-lucide="log-out" class="w-4 h-4"></i>
         </button>
       </div>
     </aside>
 
-    <!-- 中央エリア -->
-    <main class="flex-1 min-w-0 border-r border-gray-200 dark:border-xborder pb-24 md:pb-12">
+    <!-- 中央タイムライン -->
+    <main class="flex-1 min-w-0 border-r theme-border pb-24 md:pb-12">
       
-      <!-- ヘッダー -->
-      <header class="sticky top-0 z-30 backdrop-blur-md bg-white/85 dark:bg-xdark/85 border-b border-gray-200 dark:border-xborder">
+      <!-- 上部固定ヘッダー＆カテゴリータブ -->
+      <header class="sticky top-0 z-30 backdrop-blur-md bg-black/75 border-b theme-border">
         <div class="px-4 py-2.5 flex items-center justify-between gap-3">
           <div class="flex items-center gap-2">
-            <span class="md:hidden font-black text-xl">𝕏</span>
+            <span class="md:hidden font-black text-2xl">𝕏</span>
             <h2 id="header-title" class="font-bold text-base">ホーム</h2>
           </div>
           <div class="flex items-center gap-2 flex-1 max-w-xs">
             <div class="relative w-full">
-              <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
-              <input id="search-input" type="text" placeholder="検索..." class="w-full bg-gray-100 dark:bg-xcard border border-transparent focus:border-sky-500 rounded-full pl-9 pr-4 py-1.5 text-xs outline-none">
+              <i data-lucide="search" class="w-4 h-4 theme-sub absolute left-3 top-1/2 -translate-y-1/2"></i>
+              <input id="search-input" type="text" placeholder="検索や #タグ..." class="w-full theme-card border theme-border rounded-full pl-9 pr-4 py-1.5 text-xs outline-none">
             </div>
           </div>
         </div>
-        <!-- カテゴリータブ -->
-        <div class="flex items-center border-t border-gray-100 dark:border-xborder/60 overflow-x-auto no-scrollbar px-2">
-          <div id="category-tabs" class="flex items-center"></div>
-        </div>
+
+        <!-- カテゴリー（タブ）バー -->
+        <div id="category-tabs" class="flex items-center overflow-x-auto border-t theme-border text-xs font-bold no-scrollbar"></div>
       </header>
 
-      <!-- プロフィールセクション -->
-      <section class="border-b border-gray-200 dark:border-xborder">
-        <div class="relative h-36 sm:h-44 bg-gradient-to-r from-slate-800 to-slate-900 overflow-hidden">
+      <!-- X風プロフィールヘッダー -->
+      <section class="border-b theme-border">
+        <div class="h-36 sm:h-44 w-full bg-gradient-to-r from-slate-900 via-sky-950 to-slate-900 relative overflow-hidden">
           <img id="profile-banner" src="" class="w-full h-full object-cover hidden">
         </div>
-        <div class="px-4 pb-4">
-          <div class="flex justify-between items-end -mt-12 sm:-mt-14 mb-3 relative z-10">
-            <img id="profile-avatar" src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png" class="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-white dark:border-xdark object-cover bg-xcard">
-            <button onclick="openModal('profile-modal')" class="px-4 py-1.5 rounded-full border border-gray-300 dark:border-xborder font-bold text-xs hover:bg-gray-100 dark:hover:bg-xcard transition">プロフィール編集</button>
+        <div class="px-4 pb-4 relative">
+          <div class="flex justify-between items-end -mt-12 sm:-mt-14 mb-3">
+            <img id="profile-avatar" src="" class="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-black object-cover bg-zinc-900">
+            <div class="flex gap-2">
+              <button onclick="openCategoryModal()" class="px-3.5 py-1.5 rounded-full border theme-border text-xs font-bold hover:bg-white/5 transition">
+                タブ編集
+              </button>
+              <button onclick="openProfileModal()" class="px-4 py-1.5 rounded-full border theme-border text-xs font-bold hover:bg-white/5 transition">
+                プロフィールを編集
+              </button>
+            </div>
           </div>
-          <h1 id="profile-name" class="font-extrabold text-lg leading-tight">My Note</h1>
-          <div id="profile-handle" class="text-xs text-gray-400 mb-2">@personal_note</div>
-          <p id="profile-bio" class="text-xs sm:text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap"></p>
+          <h1 id="profile-name" class="font-extrabold text-lg leading-tight">Personal Note</h1>
+          <div id="profile-handle" class="text-xs theme-sub mb-2">@my_private_x</div>
+          <p id="profile-bio" class="text-xs whitespace-pre-wrap leading-relaxed"></p>
         </div>
       </section>
 
-      <!-- フィード / ギャラリー領域 -->
-      <div id="feed-list" class="divide-y divide-gray-200 dark:divide-xborder"></div>
+      <!-- 投稿一覧フィード -->
+      <div id="feed-list" class="divide-y theme-border"></div>
     </main>
 
-    <!-- 右サイドバー -->
-    <aside class="hidden lg:block w-72 p-4 space-y-4 sticky top-0 h-screen overflow-y-auto">
-      <div class="bg-gray-100 dark:bg-xcard rounded-2xl p-4 border border-gray-200 dark:border-xborder">
-        <h3 class="font-bold text-sm mb-3 flex items-center gap-1.5"><i data-lucide="hash" class="w-4 h-4 accent-text"></i> ハッシュタグ</h3>
-        <div id="tag-list" class="flex flex-wrap gap-1.5 text-xs text-gray-400">タグ未設定</div>
+    <!-- 右サイドバー（タグ＆ショートカット案内） -->
+    <aside class="hidden lg:block w-72 p-4 space-y-4 sticky top-0 h-screen overflow-y-auto shrink-0">
+      <div class="theme-card rounded-2xl p-4 border theme-border">
+        <h3 class="font-bold text-sm mb-3 flex items-center gap-1.5">
+          <i data-lucide="hash" class="w-4 h-4 theme-accent-text"></i> ハッシュタグ
+        </h3>
+        <div id="tag-list" class="flex flex-wrap gap-1.5 text-xs theme-sub">
+          #タグ を付けて投稿するとここに集計されます
+        </div>
       </div>
-      <div class="bg-gray-100 dark:bg-xcard rounded-2xl p-4 border border-gray-200 dark:border-xborder text-xs text-gray-400 space-y-2">
-        <div class="font-bold text-gray-900 dark:text-gray-200">✨ 新機能追加</div>
-        <p>・AI要約・推敲機能、画像グリッドギャラリー、引用ポスト、PINロック対応。</p>
+
+      <div class="theme-card rounded-2xl p-4 border theme-border text-xs theme-sub space-y-2">
+        <div class="font-bold text-white flex items-center gap-1.5">
+          <i data-lucide="zap" class="w-4 h-4 theme-accent-text"></i> 便利機能
+        </div>
+        <p>・<b>スクショ直貼り：</b>投稿ウィンドウで <code class="px-1 py-0.5 bg-white/10 rounded">Ctrl + V</code> を押すと、クリップボードの画像をカーソル位置に直接差し込めます。</p>
+        <p>・<b>スレッド追記：</b>各投稿の「💬 スレッド追記」から、ツリー形式でノートを繋げられます。</p>
       </div>
     </aside>
   </div>
 
-  <!-- フローティング投稿ボタン -->
-  <button onclick="openComposer()" class="fixed right-5 bottom-16 md:bottom-8 z-40 w-14 h-14 rounded-full accent-bg text-white shadow-2xl flex items-center justify-center hover:scale-105 transition">
+  <!-- 右下フローティング「＋」投稿ボタン -->
+  <button onclick="openPostModal()" class="fixed right-5 bottom-20 md:bottom-8 z-40 w-14 h-14 rounded-full theme-accent-bg text-white shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition" title="新規ポスト">
     <i data-lucide="plus" class="w-7 h-7"></i>
   </button>
 
-  <!-- スマホ下部ナビ -->
-  <nav class="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 dark:bg-xdark/95 backdrop-blur border-t border-gray-200 dark:border-xborder flex justify-around py-2.5">
-    <button onclick="setFilter('all')" class="p-2 text-gray-400"><i data-lucide="home" class="w-5 h-5"></i></button>
-    <button onclick="setFilter('like')" class="p-2 text-gray-400"><i data-lucide="heart" class="w-5 h-5"></i></button>
-    <button onclick="setFilter('media')" class="p-2 text-gray-400"><i data-lucide="image" class="w-5 h-5"></i></button>
-    <button onclick="openModal('appearance-modal')" class="p-2 text-gray-400"><i data-lucide="palette" class="w-5 h-5"></i></button>
-    <button onclick="openModal('profile-modal')" class="p-2 text-gray-400"><i data-lucide="user" class="w-5 h-5"></i></button>
+  <!-- スマホ用下部ナビゲーション -->
+  <nav class="md:hidden fixed bottom-0 inset-x-0 z-30 bg-black/95 backdrop-blur border-t theme-border flex justify-around py-2.5">
+    <button onclick="setFilter('all')" class="p-2 theme-sub hover:text-white"><i data-lucide="home" class="w-5 h-5"></i></button>
+    <button onclick="setFilter('bookmark')" class="p-2 theme-sub hover:text-white"><i data-lucide="bookmark" class="w-5 h-5"></i></button>
+    <button onclick="openCategoryModal()" class="p-2 theme-sub hover:text-white"><i data-lucide="folder-kanban" class="w-5 h-5"></i></button>
+    <button onclick="openProfileModal()" class="p-2 theme-sub hover:text-white"><i data-lucide="user" class="w-5 h-5"></i></button>
+    <button onclick="openDisplayModal()" class="p-2 theme-sub hover:text-white"><i data-lucide="sliders" class="w-5 h-5"></i></button>
   </nav>
 
-  <!-- ==================== 投稿・編集・引用モーダル ==================== -->
-  <div id="composer-modal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-start justify-center p-2 sm:p-6 overflow-y-auto">
-    <div class="w-full max-w-2xl bg-white dark:bg-xdark border border-gray-200 dark:border-xborder rounded-2xl shadow-2xl overflow-hidden my-auto">
-      <div class="px-4 py-3 border-b border-gray-200 dark:border-xborder flex items-center justify-between">
-        <button onclick="closeComposer()" class="p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-xcard"><i data-lucide="x" class="w-5 h-5"></i></button>
-        <div class="flex items-center gap-2">
-          <span id="composer-mode-badge" class="text-xs font-bold text-gray-400">新規ポスト</span>
-          <select id="post-category-select" class="bg-gray-100 dark:bg-xcard border border-gray-300 dark:border-xborder rounded-full px-3 py-1 text-xs font-bold outline-none"></select>
-        </div>
-        <button onclick="savePost()" class="px-5 py-1.5 rounded-full accent-bg text-white font-bold text-xs">投稿する</button>
+  <!-- ========================================================================= -->
+  <!-- 1. 投稿・スレッド追記ポップアップモーダル（Ctrl+V ペースト対応） -->
+  <!-- ========================================================================= -->
+  <div id="post-modal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-start justify-center p-2 sm:p-6 overflow-y-auto">
+    <div class="w-full max-w-2xl theme-card border theme-border rounded-2xl shadow-2xl overflow-hidden my-auto">
+      <!-- モーダルヘッダー -->
+      <div class="px-4 py-3 border-b theme-border flex items-center justify-between">
+        <button onclick="closePostModal()" class="p-1.5 rounded-full hover:bg-white/10">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+        <span id="modal-mode-label" class="text-xs font-bold theme-accent-text">新規ポスト</span>
+        <button onclick="savePost()" id="submit-btn" class="px-5 py-1.5 rounded-full theme-accent-bg text-white font-bold text-xs hover:opacity-90 transition">
+          ポストする
+        </button>
       </div>
 
-      <!-- 引用・返信元プレビュー -->
-      <div id="composer-quote-preview" class="hidden p-3 m-3 bg-gray-100 dark:bg-xcard border border-xborder rounded-xl text-xs"></div>
-      <div id="reply-parent-preview" class="hidden px-4 py-2 bg-gray-100/60 dark:bg-xcard/60 border-b border-xborder text-xs text-gray-400"></div>
+      <!-- モーダル中身 -->
+      <div class="p-4 space-y-3 max-h-[75vh] overflow-y-auto">
+        <!-- スレッド返信先プレビュー -->
+        <div id="reply-parent-info" class="hidden text-xs px-3 py-2 rounded-lg bg-white/5 border theme-border theme-sub"></div>
 
-      <div class="p-4 max-h-[70vh] overflow-y-auto space-y-3">
-        <input id="post-title" type="text" class="w-full bg-transparent text-base font-bold outline-none border-b border-transparent focus:border-xborder pb-1">
-        
-        <!-- AI要約・推敲ボタン -->
-        <div class="flex items-center gap-2">
-          <button onclick="aiAssistant('refine')" class="px-3 py-1 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/30 text-xs font-bold hover:bg-sky-500/20 flex items-center gap-1">🤖 AI推敲・トーン調整</button>
-          <button onclick="aiAssistant('summarize')" class="px-3 py-1 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/30 text-xs font-bold hover:bg-purple-500/20 flex items-center gap-1">🤖 AI要約</button>
+        <!-- カテゴリー選択＆タイトル -->
+        <div class="flex flex-wrap items-center gap-2">
+          <select id="post-category" class="theme-card border theme-border rounded-full px-3 py-1 text-xs font-bold outline-none"></select>
+          <input id="post-title" type="text" placeholder="タイトル（任意）" class="flex-1 bg-transparent text-sm font-bold placeholder-gray-500 outline-none border-b theme-border pb-1">
         </div>
 
+        <!-- ブロック一覧 -->
         <div id="editor-blocks" class="space-y-3"></div>
       </div>
 
-      <div class="px-4 py-3 border-t border-gray-200 dark:border-xborder bg-gray-50 dark:bg-xcard/40 flex items-center justify-between">
+      <!-- モーダル下部ツールバー -->
+      <div class="px-4 py-3 border-t theme-border flex flex-wrap items-center justify-between gap-2 bg-black/30">
         <div class="flex items-center gap-1">
-          <label class="cursor-pointer p-2 rounded-full hover:bg-white/10 accent-text transition flex items-center gap-1 text-xs font-bold">
-            <i data-lucide="image-plus" class="w-4 h-4"></i> 写真
+          <label class="cursor-pointer p-2 rounded-full hover:bg-white/10 theme-accent-text transition flex items-center gap-1 text-xs font-bold" title="カーソル位置に写真を挿入">
+            <i data-lucide="image-plus" class="w-4 h-4"></i>
+            <span>写真</span>
             <input id="photo-input" type="file" accept="image/*" multiple class="hidden">
           </label>
-          <button onclick="insertUrlBlock()" class="p-2 rounded-full hover:bg-white/10 accent-text transition flex items-center gap-1 text-xs font-bold"><i data-lucide="video" class="w-4 h-4"></i> 動画/URL</button>
-          <button onclick="addTextBlock()" class="p-2 rounded-full hover:bg-white/10 accent-text transition flex items-center gap-1 text-xs font-bold"><i data-lucide="plus" class="w-4 h-4"></i> 段落</button>
+          <button onclick="insertUrlBlock()" class="p-2 rounded-full hover:bg-white/10 theme-accent-text transition flex items-center gap-1 text-xs font-bold">
+            <i data-lucide="video" class="w-4 h-4"></i>
+            <span>動画/URL</span>
+          </button>
+          <button onclick="addTextBlock()" class="p-2 rounded-full hover:bg-white/10 theme-accent-text transition flex items-center gap-1 text-xs font-bold">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>段落追加</span>
+          </button>
         </div>
-        <span id="char-count" class="text-xs text-gray-400">0 文字</span>
+        <div class="text-[11px] theme-sub">
+          <span id="char-count">0 文字</span> · <span class="hidden sm:inline">スクショ Ctrl+V 対応</span>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- ==================== プロフィール編集モーダル ==================== -->
-  <div id="profile-modal" class="hidden fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-    <div class="w-full max-w-md bg-white dark:bg-xdark border border-xborder rounded-2xl p-5 space-y-4">
-      <div class="flex items-center justify-between border-b border-xborder pb-3">
-        <h3 class="font-bold text-base">プロフィール編集</h3>
-        <button onclick="closeModal('profile-modal')" class="p-1 hover:bg-xcard rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button>
+  <!-- ========================================================================= -->
+  <!-- 2. プロフィール編集モーダル -->
+  <!-- ========================================================================= -->
+  <div id="profile-modal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-md theme-card border theme-border rounded-2xl p-5 space-y-4">
+      <div class="flex items-center justify-between border-b theme-border pb-3">
+        <h3 class="font-bold text-base">プロフィールを編集</h3>
+        <button onclick="closeProfileModal()" class="p-1 hover:bg-white/10 rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
       <div class="space-y-3 text-xs">
-        <div><label class="block text-gray-400 mb-1">ヘッダー画像</label><input id="banner-file-input" type="file" accept="image/*" class="w-full"></div>
-        <div><label class="block text-gray-400 mb-1">アイコン画像</label><input id="avatar-file-input" type="file" accept="image/*" class="w-full"></div>
-        <div><label class="block text-gray-400 mb-1">表示名</label><input id="prof-name-input" type="text" class="w-full bg-gray-100 dark:bg-xcard border border-xborder rounded-lg px-3 py-2 text-sm outline-none"></div>
-        <div><label class="block text-gray-400 mb-1">ハンドル (@)</label><input id="prof-handle-input" type="text" class="w-full bg-gray-100 dark:bg-xcard border border-xborder rounded-lg px-3 py-2 text-sm outline-none"></div>
-        <div><label class="block text-gray-400 mb-1">自己紹介</label><textarea id="prof-bio-input" rows="3" class="w-full bg-gray-100 dark:bg-xcard border border-xborder rounded-lg px-3 py-2 text-sm outline-none"></textarea></div>
+        <div>
+          <label class="block font-bold mb-1">ヘッダー背景画像</label>
+          <input id="banner-file" type="file" accept="image/*" class="w-full text-xs">
+        </div>
+        <div>
+          <label class="block font-bold mb-1">アイコン画像</label>
+          <input id="avatar-file" type="file" accept="image/*" class="w-full text-xs">
+        </div>
+        <div>
+          <label class="block font-bold mb-1">表示名</label>
+          <input id="edit-profile-name" type="text" class="w-full bg-black/40 border theme-border rounded-lg px-3 py-2 text-sm outline-none">
+        </div>
+        <div>
+          <label class="block font-bold mb-1">@ハンドル名</label>
+          <input id="edit-profile-handle" type="text" class="w-full bg-black/40 border theme-border rounded-lg px-3 py-2 text-sm outline-none">
+        </div>
+        <div>
+          <label class="block font-bold mb-1">自己紹介・メモ</label>
+          <textarea id="edit-profile-bio" class="w-full bg-black/40 border theme-border rounded-lg px-3 py-2 text-sm outline-none min-h-[70px]"></textarea>
+        </div>
       </div>
-      <div class="flex justify-end pt-2"><button onclick="saveProfile()" class="px-5 py-2 rounded-full accent-bg text-white font-bold text-xs">保存</button></div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="saveProfile()" class="px-5 py-2 rounded-full theme-accent-bg text-white font-bold text-xs">保存する</button>
+      </div>
     </div>
   </div>
 
-  <!-- ==================== 設定＆バックアップモーダル ==================== -->
-  <div id="appearance-modal" class="hidden fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-    <div class="w-full max-w-md bg-white dark:bg-xdark border border-xborder rounded-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between border-b border-xborder pb-3">
-        <h3 class="font-bold text-base">設定・バックアップ</h3>
-        <button onclick="closeModal('appearance-modal')" class="p-1 hover:bg-xcard rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button>
+  <!-- ========================================================================= -->
+  <!-- 3. 表示・フォントサイズ・行間・余白・配色モーダル -->
+  <!-- ========================================================================= -->
+  <div id="display-modal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-md theme-card border theme-border rounded-2xl p-5 space-y-4">
+      <div class="flex items-center justify-between border-b theme-border pb-3">
+        <h3 class="font-bold text-base">表示・フォント・配色の設定</h3>
+        <button onclick="closeDisplayModal()" class="p-1 hover:bg-white/10 rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
+
       <div class="space-y-4 text-xs">
         <div>
-          <label class="block text-gray-400 mb-2 font-bold">PINロック (セキュリティ)</label>
-          <div class="flex gap-2">
-            <input id="set-pin-input" type="password" maxlength="6" placeholder="4〜6桁のPIN" class="flex-1 bg-gray-100 dark:bg-xcard border border-xborder rounded-xl px-3 py-2 outline-none">
-            <button onclick="savePinCode()" class="px-4 py-2 rounded-xl accent-bg text-white font-bold">設定</button>
-            <button onclick="removePinCode()" class="px-3 py-2 rounded-xl bg-red-500/10 text-red-400">解除</button>
+          <label class="block font-bold mb-2">フォントサイズ</label>
+          <div class="grid grid-cols-4 gap-2">
+            <button onclick="updateThemeSetting('fontSize', '13px')" class="py-2 border theme-border rounded-lg hover:bg-white/5">小 (13px)</button>
+            <button onclick="updateThemeSetting('fontSize', '15px')" class="py-2 border theme-border rounded-lg hover:bg-white/5">標準 (15px)</button>
+            <button onclick="updateThemeSetting('fontSize', '17px')" class="py-2 border theme-border rounded-lg hover:bg-white/5">大 (17px)</button>
+            <button onclick="updateThemeSetting('fontSize', '20px')" class="py-2 border theme-border rounded-lg hover:bg-white/5">特大 (20px)</button>
           </div>
         </div>
+
         <div>
-          <label class="block text-gray-400 mb-2 font-bold">テーマ・カラー</label>
-          <div class="flex gap-3 mb-3">
-            <button onclick="setAccent('#1d9bf0')" class="w-8 h-8 rounded-full bg-[#1d9bf0]"></button>
-            <button onclick="setAccent('#7856ff')" class="w-8 h-8 rounded-full bg-[#7856ff]"></button>
-            <button onclick="setAccent('#f91880')" class="w-8 h-8 rounded-full bg-[#f91880]"></button>
-            <button onclick="setAccent('#00ba7c')" class="w-8 h-8 rounded-full bg-[#00ba7c]"></button>
+          <label class="block font-bold mb-2">行間（ラインハイト）</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button onclick="updateThemeSetting('lineHeight', '1.4')" class="py-2 border theme-border rounded-lg hover:bg-white/5">狭め (1.4)</button>
+            <button onclick="updateThemeSetting('lineHeight', '1.65')" class="py-2 border theme-border rounded-lg hover:bg-white/5">標準 (1.65)</button>
+            <button onclick="updateThemeSetting('lineHeight', '2.0')" class="py-2 border theme-border rounded-lg hover:bg-white/5">広め (2.0)</button>
           </div>
         </div>
-        <div class="border-t border-xborder pt-3">
-          <label class="block text-gray-400 mb-2 font-bold">データバックアップ (JSON一括DL)</label>
-          <div class="flex gap-2">
-            <button onclick="exportData()" class="flex-1 py-2 rounded-xl bg-gray-100 dark:bg-xcard border border-xborder font-bold">全データをダウンロード</button>
-            <label class="flex-1 py-2 rounded-xl bg-gray-100 dark:bg-xcard border border-xborder font-bold text-center cursor-pointer">
-              復元 (インポート) <input type="file" accept=".json" onchange="importData(event)" class="hidden">
-            </label>
+
+        <div>
+          <label class="block font-bold mb-2">投稿カードの余白</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button onclick="updateThemeSetting('padding', '10px')" class="py-2 border theme-border rounded-lg hover:bg-white/5">コンパクト</button>
+            <button onclick="updateThemeSetting('padding', '16px')" class="py-2 border theme-border rounded-lg hover:bg-white/5">標準</button>
+            <button onclick="updateThemeSetting('padding', '24px')" class="py-2 border theme-border rounded-lg hover:bg-white/5">ゆったり</button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold mb-2">背景テーマ</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button onclick="updateThemeSetting('bgMode', 'black')" class="py-2 bg-black text-white border border-gray-700 rounded-lg font-bold">ブラック</button>
+            <button onclick="updateThemeSetting('bgMode', 'dim')" class="py-2 bg-[#15202b] text-white border border-gray-600 rounded-lg font-bold">ダークブルー</button>
+            <button onclick="updateThemeSetting('bgMode', 'light')" class="py-2 bg-white text-black border border-gray-300 rounded-lg font-bold">ライト(白)</button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold mb-2">アクセントカラー</label>
+          <div class="flex items-center justify-around pt-1">
+            <button onclick="updateThemeSetting('accent', '#1d9bf0')" class="w-8 h-8 rounded-full bg-[#1d9bf0]"></button>
+            <button onclick="updateThemeSetting('accent', '#00ba7c')" class="w-8 h-8 rounded-full bg-[#00ba7c]"></button>
+            <button onclick="updateThemeSetting('accent', '#f91880')" class="w-8 h-8 rounded-full bg-[#f91880]"></button>
+            <button onclick="updateThemeSetting('accent', '#7856ff')" class="w-8 h-8 rounded-full bg-[#7856ff]"></button>
+            <button onclick="updateThemeSetting('accent', '#ff7a00')" class="w-8 h-8 rounded-full bg-[#ff7a00]"></button>
+            <button onclick="updateThemeSetting('accent', '#ffd400')" class="w-8 h-8 rounded-full bg-[#ffd400]"></button>
           </div>
         </div>
       </div>
-      <div class="flex justify-end pt-2"><button onclick="closeModal('appearance-modal')" class="px-5 py-2 rounded-full accent-bg text-white font-bold text-xs">閉じる</button></div>
     </div>
   </div>
 
-  <!-- ==================== カテゴリー管理モーダル ==================== -->
-  <div id="category-modal" class="hidden fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-    <div class="w-full max-w-md bg-white dark:bg-xdark border border-xborder rounded-2xl p-5 space-y-4">
-      <div class="flex items-center justify-between border-b border-xborder pb-3">
-        <h3 class="font-bold text-base">カテゴリー管理</h3>
-        <button onclick="closeModal('category-modal')" class="p-1 hover:bg-xcard rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button>
+  <!-- ========================================================================= -->
+  <!-- 4. カテゴリー（タブ）管理モーダル -->
+  <!-- ========================================================================= -->
+  <div id="category-modal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-md theme-card border theme-border rounded-2xl p-5 space-y-4">
+      <div class="flex items-center justify-between border-b theme-border pb-3">
+        <h3 class="font-bold text-base">カテゴリー（タブ）管理</h3>
+        <button onclick="closeCategoryModal()" class="p-1 hover:bg-white/10 rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
       <div class="flex gap-2">
-        <input id="new-category-input" type="text" placeholder="新しいカテゴリー名" class="flex-1 bg-gray-100 dark:bg-xcard border border-xborder rounded-xl px-3 py-2 text-xs outline-none">
-        <button onclick="addCategory()" class="px-4 py-2 rounded-xl accent-bg text-white font-bold text-xs">追加</button>
+        <input id="new-category-input" type="text" placeholder="新しいカテゴリー名（例：勉強・料理・日記）" class="flex-1 bg-black/40 border theme-border rounded-lg px-3 py-2 text-xs outline-none">
+        <button onclick="addCategory()" class="px-4 py-2 rounded-lg theme-accent-bg text-white font-bold text-xs">追加</button>
       </div>
-      <div id="category-manage-list" class="space-y-2 max-h-60 overflow-y-auto text-xs"></div>
+      <div id="category-manage-list" class="space-y-1.5 max-h-60 overflow-y-auto text-xs"></div>
     </div>
   </div>
 
-  <!-- 画像ライトボックス -->
+  <!-- 画像拡大モーダル -->
   <div id="lightbox" onclick="this.classList.add('hidden')" class="hidden fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 cursor-zoom-out">
     <img id="lightbox-img" src="" class="max-w-full max-h-full rounded-lg object-contain">
   </div>
 
+  <!-- Firebase Realtime Database & Auth -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -314,7 +395,7 @@
     // =========================================================================
     // ★ここに自分の firebaseConfig を貼り付けてください
     // =========================================================================
-   const firebaseConfig = {
+const firebaseConfig = {
   apiKey: "AIzaSyDHY8YRAmdJlGdB24inmnX5wmL4Ikt66bA",
   authDomain: "my-x-note.firebaseapp.com",
   databaseURL: "https://my-x-note-default-rtdb.firebaseio.com",
@@ -329,269 +410,334 @@
     const db = getDatabase(app);
     const provider = new GoogleAuthProvider();
 
+    const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%231d9bf0'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='central' text-anchor='middle' fill='%23ffffff' font-family='sans-serif' font-weight='900' font-size='52'%3E%F0%9D%95%8F%3C/text%3E%3C/svg%3E";
+
     let currentUser = null;
     let postsData = [];
-    let categories = ['日記', 'メモ', 'アイデア'];
-    let currentFilter = 'all';
+    let categories = ['すべて', 'メモ', '学習', '日記'];
     let currentCategory = 'すべて';
+    let currentFilter = 'all';
     let editingPostId = null;
     let replyParentId = null;
-    let quotePostId = null;
-    let userSettings = { pin: '', accent: '#1d9bf0' };
 
-    let profileData = { name: 'My Note', handle: 'personal_note', bio: '', avatar: 'https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png', banner: '' };
+    let profileData = {
+      name: 'Personal Note',
+      handle: '@my_note',
+      bio: '自分専用の長文・メディア・スレッド同期ノート',
+      avatar: DEFAULT_AVATAR,
+      banner: ''
+    };
+
+    let themeSettings = {
+      fontSize: '15px',
+      lineHeight: '1.65',
+      padding: '16px',
+      bgMode: 'black',
+      accent: '#1d9bf0'
+    };
+
     let editorBlocks = [{ id: crypto.randomUUID(), type: 'text', content: '' }];
     let activeBlockIndex = 0;
     let activeCursorPos = 0;
 
+    // ログイン・ログアウト
     document.getElementById('login-btn').addEventListener('click', async () => {
       try { await signInWithPopup(auth, provider); }
-      catch (err) { alert("ログインエラー: " + err.message); }
+      catch (err) {
+        const errEl = document.getElementById('auth-error');
+        errEl.textContent = "ログインエラー: " + err.message;
+        errEl.classList.remove('hidden');
+      }
     });
     document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 
+    // 認証監視＆データ購読
     onAuthStateChanged(auth, (user) => {
       currentUser = user;
-      if (user) {
-        document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('user-email').textContent = user.email;
-
-        // 設定読込＆PINチェック
-        onValue(ref(db, `users/${user.uid}/settings`), (snap) => {
-          if (snap.val()) {
-            userSettings = snap.val();
-            if (userSettings.pin && !sessionStorage.getItem('pin_unlocked')) {
-              document.getElementById('pin-lock-screen').classList.remove('hidden');
-            } else {
-              document.getElementById('app-screen').classList.remove('hidden');
-            }
-          } else {
-            document.getElementById('app-screen').classList.remove('hidden');
-          }
-          if (userSettings.accent) {
-            document.documentElement.style.setProperty('--accent', userSettings.accent);
-          }
-        });
-
-        onValue(ref(db, `users/${user.uid}/posts`), (snap) => {
-          postsData = Object.entries(snap.val() || {}).map(([id, item]) => ({ id, ...item }));
-          renderFeed();
-          renderTags();
-        });
-
-        onValue(ref(db, `users/${user.uid}/profile`), (snap) => {
-          if (snap.val()) { profileData = { ...profileData, ...snap.val() }; applyProfileUI(); }
-        });
-
-        onValue(ref(db, `users/${user.uid}/categories`), (snap) => {
-          if (snap.val() && Array.isArray(snap.val())) { categories = snap.val(); }
-          renderCategories();
-        });
-      } else {
+      if (!user) {
         document.getElementById('login-screen').classList.remove('hidden');
-        document.getElementById('pin-lock-screen').classList.add('hidden');
         document.getElementById('app-screen').classList.add('hidden');
+        return;
       }
+      document.getElementById('login-screen').classList.add('hidden');
+      document.getElementById('app-screen').classList.remove('hidden');
+      document.getElementById('user-email').textContent = user.email;
+
+      // 投稿購読
+      onValue(ref(db, `users/${user.uid}/posts`), (snap) => {
+        const val = snap.val() || {};
+        postsData = Object.entries(val).map(([id, item]) => ({ id, ...item }));
+        renderFeed();
+        renderTags();
+      });
+
+      // プロフィール購読
+      onValue(ref(db, `users/${user.uid}/profile`), (snap) => {
+        if (snap.val()) profileData = { ...profileData, ...snap.val() };
+        applyProfileUI();
+      });
+
+      // カテゴリー購読
+      onValue(ref(db, `users/${user.uid}/categories`), (snap) => {
+        if (snap.val() && Array.isArray(snap.val())) categories = snap.val();
+        renderCategories();
+      });
+
+      // 表示設定購読
+      onValue(ref(db, `users/${user.uid}/settings`), (snap) => {
+        if (snap.val()) themeSettings = { ...themeSettings, ...snap.val() };
+        applyThemeSettings();
+      });
     });
-
-    window.verifyPin = function() {
-      const val = document.getElementById('pin-input').value;
-      if (val === userSettings.pin) {
-        sessionStorage.setItem('pin_unlocked', 'true');
-        document.getElementById('pin-lock-screen').classList.add('hidden');
-        document.getElementById('app-screen').classList.remove('hidden');
-      } else {
-        document.getElementById('pin-error').classList.remove('hidden');
-      }
-    };
-
-    window.savePinCode = async function() {
-      const pin = document.getElementById('set-pin-input').value.trim();
-      if (!pin) return;
-      userSettings.pin = pin;
-      await set(ref(db, `users/${currentUser.uid}/settings`), userSettings);
-      alert('PINコードを設定しました');
-    };
-
-    window.removePinCode = async function() {
-      userSettings.pin = '';
-      await set(ref(db, `users/${currentUser.uid}/settings`), userSettings);
-      alert('PINコードを解除しました');
-    };
-
-    window.setAccent = async function(color) {
-      userSettings.accent = color;
-      document.documentElement.style.setProperty('--accent', color);
-      if (currentUser) await set(ref(db, `users/${currentUser.uid}/settings`), userSettings);
-    };
 
     function applyProfileUI() {
       document.getElementById('profile-name').textContent = profileData.name;
       document.getElementById('sidebar-name').textContent = profileData.name;
-      document.getElementById('profile-handle').textContent = '@' + (profileData.handle || 'personal');
-      document.getElementById('profile-bio').textContent = profileData.bio || '';
-      if (profileData.avatar) {
-        document.getElementById('profile-avatar').src = profileData.avatar;
-        document.getElementById('sidebar-avatar').src = profileData.avatar;
-      }
+      document.getElementById('profile-handle').textContent = profileData.handle;
+      document.getElementById('profile-bio').textContent = profileData.bio;
+      document.getElementById('profile-avatar').src = profileData.avatar || DEFAULT_AVATAR;
+      document.getElementById('sidebar-avatar').src = profileData.avatar || DEFAULT_AVATAR;
       const bannerEl = document.getElementById('profile-banner');
-      if (profileData.banner) { bannerEl.src = profileData.banner; bannerEl.classList.remove('hidden'); }
-      else { bannerEl.classList.add('hidden'); }
-      document.getElementById('prof-name-input').value = profileData.name || '';
-      document.getElementById('prof-handle-input').value = profileData.handle || '';
-      document.getElementById('prof-bio-input').value = profileData.bio || '';
+      if (profileData.banner) {
+        bannerEl.src = profileData.banner;
+        bannerEl.classList.remove('hidden');
+      } else {
+        bannerEl.classList.add('hidden');
+      }
     }
 
-    window.saveProfile = async function() {
-      if (!currentUser) return;
-      const avatarInput = document.getElementById('avatar-file-input');
-      const bannerInput = document.getElementById('banner-file-input');
-      if (avatarInput.files[0]) profileData.avatar = await compressImage(avatarInput.files[0], 400);
-      if (bannerInput.files[0]) profileData.banner = await compressImage(bannerInput.files[0], 1200);
-      profileData.name = document.getElementById('prof-name-input').value.trim() || 'My Note';
-      profileData.handle = document.getElementById('prof-handle-input').value.trim() || 'personal';
-      profileData.bio = document.getElementById('prof-bio-input').value;
-      await set(ref(db, `users/${currentUser.uid}/profile`), profileData);
-      closeModal('profile-modal');
+    function applyThemeSettings() {
+      const root = document.documentElement;
+      root.style.setProperty('--post-font-size', themeSettings.fontSize);
+      root.style.setProperty('--post-line-height', themeSettings.lineHeight);
+      root.style.setProperty('--post-padding', themeSettings.padding);
+      root.style.setProperty('--accent', themeSettings.accent);
+
+      if (themeSettings.bgMode === 'light') {
+        root.style.setProperty('--bg-main', '#ffffff');
+        root.style.setProperty('--bg-card', '#f7f9f9');
+        root.style.setProperty('--text-main', '#0f1419');
+        root.style.setProperty('--text-sub', '#536471');
+        root.style.setProperty('--border-color', '#eff3f4');
+      } else if (themeSettings.bgMode === 'dim') {
+        root.style.setProperty('--bg-main', '#15202b');
+        root.style.setProperty('--bg-card', '#1e2732');
+        root.style.setProperty('--text-main', '#f7f9f9');
+        root.style.setProperty('--text-sub', '#8b98a5');
+        root.style.setProperty('--border-color', '#38444d');
+      } else {
+        root.style.setProperty('--bg-main', '#000000');
+        root.style.setProperty('--bg-card', '#16181c');
+        root.style.setProperty('--text-main', '#e7e9ea');
+        root.style.setProperty('--text-sub', '#71767b');
+        root.style.setProperty('--border-color', '#2f3336');
+      }
+    }
+
+    window.updateThemeSetting = function(key, val) {
+      themeSettings[key] = val;
+      applyThemeSettings();
+      if (currentUser) set(ref(db, `users/${currentUser.uid}/settings`), themeSettings);
     };
 
+    // カテゴリー描画
     function renderCategories() {
-      const tabContainer = document.getElementById('category-tabs');
-      const allTabs = ['すべて', ...categories];
-      tabContainer.innerHTML = allTabs.map(cat => `
-        <button onclick="selectCategory('${cat}')" class="px-4 py-2.5 text-xs font-bold whitespace-nowrap border-b-2 transition ${currentCategory === cat ? 'accent-border accent-text' : 'border-transparent text-gray-400 hover:text-gray-200'}">${cat}</button>
+      const tabBar = document.getElementById('category-tabs');
+      const selectEl = document.getElementById('post-category');
+      const manageList = document.getElementById('category-manage-list');
+
+      if (!categories.includes('すべて')) categories.unshift('すべて');
+
+      tabBar.innerHTML = categories.map(cat => `
+        <button onclick="selectCategory('${cat}')" class="px-4 py-3 whitespace-nowrap border-b-2 transition ${currentCategory === cat ? 'theme-accent-border theme-accent-text' : 'border-transparent theme-sub hover:text-white'}">
+          ${cat}
+        </button>
       `).join('');
 
-      document.getElementById('post-category-select').innerHTML = ['未分類', ...categories].map(cat => `<option value="${cat}">${cat}</option>`).join('');
+      selectEl.innerHTML = categories.filter(c => c !== 'すべて').map(cat =>
+        `<option value="${cat}">${cat}</option>`
+      ).join('');
 
-      document.getElementById('category-manage-list').innerHTML = categories.map((cat, idx) => `
-        <div class="flex items-center justify-between bg-gray-100 dark:bg-xcard px-3 py-2 rounded-lg">
-          <input type="text" value="${cat}" onchange="updateCategoryName(${idx}, this.value)" class="bg-transparent outline-none flex-1 font-bold">
-          <button onclick="deleteCategory(${idx})" class="text-red-400 hover:underline">削除</button>
+      manageList.innerHTML = categories.filter(c => c !== 'すべて').map(cat => `
+        <div class="flex items-center justify-between px-3 py-2 rounded-lg bg-black/30 border theme-border">
+          <span>${cat}</span>
+          <button onclick="deleteCategory('${cat}')" class="text-red-400 hover:underline">削除</button>
         </div>
       `).join('');
     }
 
-    window.selectCategory = (cat) => { currentCategory = cat; renderCategories(); renderFeed(); };
-    window.addCategory = async () => {
-      const val = document.getElementById('new-category-input').value.trim();
-      if (!val || categories.includes(val)) return;
-      categories.push(val);
-      document.getElementById('new-category-input').value = '';
-      if (currentUser) await set(ref(db, `users/${currentUser.uid}/categories`), categories);
+    window.selectCategory = function(cat) {
+      currentCategory = cat;
       renderCategories();
+      renderFeed();
     };
-    window.updateCategoryName = async (idx, newName) => {
-      if (!newName.trim()) return;
-      categories[idx] = newName.trim();
-      if (currentUser) await set(ref(db, `users/${currentUser.uid}/categories`), categories);
-      renderCategories();
-    };
-    window.deleteCategory = async (idx) => {
-      categories.splice(idx, 1);
-      if (currentUser) await set(ref(db, `users/${currentUser.uid}/categories`), categories);
+
+    window.addCategory = function() {
+      const input = document.getElementById('new-category-input');
+      const name = input.value.trim();
+      if (!name || categories.includes(name)) return;
+      categories.push(name);
+      input.value = '';
+      if (currentUser) set(ref(db, `users/${currentUser.uid}/categories`), categories);
       renderCategories();
     };
 
-    window.openModal = (id) => document.getElementById(id).classList.remove('hidden');
-    window.closeModal = (id) => document.getElementById(id).classList.add('hidden');
+    window.deleteCategory = function(name) {
+      categories = categories.filter(c => c !== name);
+      if (currentCategory === name) currentCategory = 'すべて';
+      if (currentUser) set(ref(db, `users/${currentUser.uid}/categories`), categories);
+      renderCategories();
+      renderFeed();
+    };
 
-    window.openComposer = function(parentId = null, editId = null, quoteId = null) {
-      editingPostId = editId;
+    // モーダル開閉処理
+    window.openPostModal = function(parentId = null) {
+      editingPostId = null;
       replyParentId = parentId;
-      quotePostId = quoteId;
-      document.getElementById('composer-quote-preview').classList.add('hidden');
-      document.getElementById('reply-parent-preview').classList.add('hidden');
-
-      if (quoteId) {
-        const qPost = postsData.find(p => p.id === quoteId);
-        if (qPost) {
-          const text = (qPost.blocks || []).find(b => b.type === 'text')?.content || qPost.title || '';
-          const qEl = document.getElementById('composer-quote-preview');
-          qEl.innerHTML = `<div class="font-bold mb-1">引用ポスト対象:</div><div class="text-gray-400">${text.slice(0, 100)}...</div>`;
-          qEl.classList.remove('hidden');
-        }
-      }
-
-      if (editId) {
-        const post = postsData.find(p => p.id === editId);
-        if (!post) return;
-        document.getElementById('composer-mode-badge').textContent = 'ポスト編集';
-        document.getElementById('post-title').value = post.title || '';
-        document.getElementById('post-category-select').value = post.category || '未分類';
-        editorBlocks = JSON.parse(JSON.stringify(post.blocks || [{ id: crypto.randomUUID(), type: 'text', content: '' }]));
-      } else {
-        document.getElementById('composer-mode-badge').textContent = parentId ? 'スレッド追記' : quoteId ? '引用ポスト' : '新規ポスト';
-        document.getElementById('post-title').value = '';
-        editorBlocks = [{ id: crypto.randomUUID(), type: 'text', content: '' }];
-      }
-
+      document.getElementById('post-title').value = '';
+      editorBlocks = [{ id: crypto.randomUUID(), type: 'text', content: '' }];
       activeBlockIndex = 0;
-      renderEditor();
-      openModal('composer-modal');
-    };
 
-    window.closeComposer = () => closeModal('composer-modal');
+      const replyInfo = document.getElementById('reply-parent-info');
+      if (parentId) {
+        const parent = postsData.find(p => p.id === parentId);
+        const preview = parent ? (parent.title || (parent.blocks?.[0]?.content || '').slice(0, 40)) : '';
+        replyInfo.textContent = `💬 スレッド追記先: ${preview || '親ポスト'}`;
+        replyInfo.classList.remove('hidden');
+        document.getElementById('modal-mode-label').textContent = 'スレッドに追記';
+        if (parent?.category) document.getElementById('post-category').value = parent.category;
+      } else {
+        replyInfo.classList.add('hidden');
+        document.getElementById('modal-mode-label').textContent = '新規ポスト';
+        if (currentCategory !== 'すべて') document.getElementById('post-category').value = currentCategory;
+      }
 
-    // AI要約・推敲アシスタント
-    window.aiAssistant = function(mode) {
-      const target = editorBlocks[activeBlockIndex];
-      if (!target || target.type !== 'text' || !target.content.trim()) {
-        alert('テキスト段落を選択するか、文章を入力してから押してください。');
-        return;
-      }
-      const text = target.content;
-      if (mode === 'refine') {
-        target.content = `【推敲済み】\n${text}\n（文体を整え、論理構成をよりクリアにしました）`;
-      } else if (mode === 'summarize') {
-        target.content = `【AI要約】\n・${text.slice(0, 60)}...\n（主要な要点を箇条書きで抽出しました）`;
-      }
+      document.getElementById('submit-btn').textContent = 'ポストする';
+      document.getElementById('post-modal').classList.remove('hidden');
       renderEditor();
     };
 
+    window.closePostModal = () => document.getElementById('post-modal').classList.add('hidden');
+
+    window.openProfileModal = function() {
+      document.getElementById('edit-profile-name').value = profileData.name || '';
+      document.getElementById('edit-profile-handle').value = profileData.handle || '';
+      document.getElementById('edit-profile-bio').value = profileData.bio || '';
+      document.getElementById('profile-modal').classList.remove('hidden');
+    };
+    window.closeProfileModal = () => document.getElementById('profile-modal').classList.add('hidden');
+
+    window.openDisplayModal = () => document.getElementById('display-modal').classList.remove('hidden');
+    window.closeDisplayModal = () => document.getElementById('display-modal').classList.add('hidden');
+
+    window.openCategoryModal = () => document.getElementById('category-modal').classList.remove('hidden');
+    window.closeCategoryModal = () => document.getElementById('category-modal').classList.add('hidden');
+
+    // プロフィール保存
+    window.saveProfile = async function() {
+      const avatarFile = document.getElementById('avatar-file').files[0];
+      const bannerFile = document.getElementById('banner-file').files[0];
+      if (avatarFile) profileData.avatar = await compressImage(avatarFile, 400);
+      if (bannerFile) profileData.banner = await compressImage(bannerFile, 1200);
+      profileData.name = document.getElementById('edit-profile-name').value.trim() || 'Personal Note';
+      profileData.handle = document.getElementById('edit-profile-handle').value.trim() || '@my_note';
+      profileData.bio = document.getElementById('edit-profile-bio').value.trim();
+
+      if (currentUser) await set(ref(db, `users/${currentUser.uid}/profile`), profileData);
+      applyProfileUI();
+      renderFeed();
+      closeProfileModal();
+    };
+
+    // エディタ描画
     window.renderEditor = function() {
       const container = document.getElementById('editor-blocks');
       container.innerHTML = '';
+
       editorBlocks.forEach((block, idx) => {
         const wrapper = document.createElement('div');
-        wrapper.className = "bg-gray-50 dark:bg-xcard/60 border border-xborder rounded-xl p-2.5";
-        const controls = `<div class="flex items-center justify-between text-[11px] text-gray-400 mb-1">
-          <span>${block.type === 'text' ? '📝 テキスト' : block.type === 'image' ? '🖼️ 写真' : '🎬 動画/URL'}</span>
-          <div class="flex items-center gap-1">
-            <button onclick="moveBlock(${idx}, -1)" class="px-1 py-0.5 hover:bg-gray-700 rounded">↑</button>
-            <button onclick="moveBlock(${idx}, 1)" class="px-1.5 py-0.5 hover:bg-gray-700 rounded">↓</button>
-            <button onclick="removeBlock(${idx})" class="px-1.5 py-0.5 text-red-400">削除</button>
+        wrapper.className = "bg-black/30 border theme-border rounded-xl p-2.5";
+
+        const controls = `
+          <div class="flex items-center justify-between text-[11px] theme-sub mb-1">
+            <span>${block.type === 'text' ? '📝 テキスト段落' : block.type === 'image' ? '🖼️ 写真' : '🎬 動画 / URL'}</span>
+            <div class="flex items-center gap-1">
+              <button onclick="moveBlock(${idx}, -1)" class="px-1.5 py-0.5 hover:bg-white/10 rounded">↑</button>
+              <button onclick="moveBlock(${idx}, 1)" class="px-1.5 py-0.5 hover:bg-white/10 rounded">↓</button>
+              <button onclick="removeBlock(${idx})" class="px-1.5 py-0.5 text-red-400 hover:bg-red-500/10 rounded">削除</button>
+            </div>
           </div>
-        </div>`;
+        `;
 
         if (block.type === 'text') {
           wrapper.innerHTML = controls;
           const ta = document.createElement('textarea');
-          ta.className = "w-full bg-transparent outline-none text-sm leading-relaxed resize-none min-h-[80px]";
+          ta.className = "w-full bg-transparent outline-none text-sm leading-relaxed resize-none min-h-[85px]";
+          ta.placeholder = "いまどうしてる？（スクショを Ctrl+V で直接ここに貼り付けられます）";
           ta.value = block.content;
           ta.addEventListener('input', (e) => {
             editorBlocks[idx].content = e.target.value;
             activeBlockIndex = idx;
-            activeCursorPos = e.target.selectionStart || 0;
+            activeCursorPos = e.target.selectionStart || e.target.value.length;
             updateCharCount();
+          });
+          ta.addEventListener('click', (e) => {
+            activeBlockIndex = idx;
+            activeCursorPos = e.target.selectionStart || 0;
+          });
+          ta.addEventListener('keyup', (e) => {
+            activeBlockIndex = idx;
+            activeCursorPos = e.target.selectionStart || 0;
           });
           wrapper.appendChild(ta);
         } else if (block.type === 'image') {
-          wrapper.innerHTML = controls + `<img src="${block.url}" class="max-h-64 rounded-lg object-contain mx-auto my-1">`;
+          wrapper.innerHTML = controls + `
+            <img src="${block.url}" class="max-h-64 rounded-lg object-contain mx-auto my-1">
+            <input type="text" placeholder="キャプション（任意）" value="${block.caption || ''}"
+              oninput="updateBlockCaption(${idx}, this.value)"
+              class="w-full mt-1 bg-transparent text-xs theme-sub border-b border-transparent focus:border-gray-600 outline-none">
+          `;
         } else if (block.type === 'embed') {
-          wrapper.innerHTML = controls + renderMediaHtml(block.url);
+          wrapper.innerHTML = controls + renderMediaHtml(block.url) + `
+            <input type="text" placeholder="キャプション（任意）" value="${block.caption || ''}"
+              oninput="updateBlockCaption(${idx}, this.value)"
+              class="w-full mt-1 bg-transparent text-xs theme-sub border-b border-transparent focus:border-gray-600 outline-none">
+          `;
         }
         container.appendChild(wrapper);
       });
+
       updateCharCount();
       lucide.createIcons();
     };
 
     function updateCharCount() {
-      const total = editorBlocks.filter(b => b.type === 'text').reduce((s, b) => s + (b.content ? b.content.length : 0), 0);
+      const total = editorBlocks
+        .filter(b => b.type === 'text')
+        .reduce((sum, b) => sum + (b.content ? b.content.length : 0), 0);
       document.getElementById('char-count').textContent = `${total.toLocaleString()} 文字`;
     }
 
+    function insertBlockAtCursor(mediaBlock) {
+      const target = editorBlocks[activeBlockIndex];
+      if (target && target.type === 'text') {
+        const text = target.content || '';
+        const before = text.slice(0, activeCursorPos);
+        const after = text.slice(activeCursorPos);
+        const newBlocks = [];
+        if (before.length > 0) newBlocks.push({ id: crypto.randomUUID(), type: 'text', content: before });
+        newBlocks.push(mediaBlock);
+        newBlocks.push({ id: crypto.randomUUID(), type: 'text', content: after });
+        editorBlocks.splice(activeBlockIndex, 1, ...newBlocks);
+        activeBlockIndex = Math.min(activeBlockIndex + 2, editorBlocks.length - 1);
+      } else {
+        editorBlocks.push(mediaBlock);
+        editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: '' });
+      }
+      renderEditor();
+    }
+
+    // 画像自動圧縮
     async function compressImage(file, maxDim = 1200) {
       return new Promise((resolve) => {
         const reader = new FileReader();
@@ -614,38 +760,77 @@
       });
     }
 
+    // ファイル選択からの写真挿入
     document.getElementById('photo-input').addEventListener('change', async (e) => {
-      for (const file of Array.from(e.target.files || [])) {
-        const dataUrl = await compressImage(file, 1200);
-        editorBlocks.push({ id: crypto.randomUUID(), type: 'image', url: dataUrl });
+      const files = Array.from(e.target.files || []);
+      for (const file of files) {
+        const dataUrl = await compressImage(file);
+        insertBlockAtCursor({ id: crypto.randomUUID(), type: 'image', url: dataUrl, caption: '' });
       }
-      renderEditor();
       e.target.value = '';
     });
 
+    // ★ Ctrl + V（クリップボードのスクショ直接貼り付け）対応
+    window.addEventListener('paste', async (e) => {
+      const modalOpen = !document.getElementById('post-modal').classList.contains('hidden');
+      if (!modalOpen) return;
+      const items = Array.from(e.clipboardData?.items || []);
+      const imageItems = items.filter(item => item.type.startsWith('image/'));
+      if (imageItems.length === 0) return;
+
+      e.preventDefault();
+      for (const item of imageItems) {
+        const file = item.getAsFile();
+        if (file) {
+          const dataUrl = await compressImage(file);
+          insertBlockAtCursor({ id: crypto.randomUUID(), type: 'image', url: dataUrl, caption: '' });
+        }
+      }
+    });
+
     window.insertUrlBlock = function() {
-      const url = prompt("動画URL（YouTubeなど）を入力:");
-      if (url) editorBlocks.push({ id: crypto.randomUUID(), type: 'embed', url: url.trim() });
+      const url = prompt("挿入したい動画URL（YouTube URL・mp4直リンク・画像URL）を入力してください:");
+      if (!url || !url.trim()) return;
+      insertBlockAtCursor({ id: crypto.randomUUID(), type: 'embed', url: url.trim(), caption: '' });
+    };
+
+    window.addTextBlock = function() {
+      editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: '' });
+      activeBlockIndex = editorBlocks.length - 1;
       renderEditor();
     };
 
-    window.addTextBlock = () => { editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: '' }); renderEditor(); };
-    window.moveBlock = (idx, dir) => {
-      const t = idx + dir;
-      if (t < 0 || t >= editorBlocks.length) return;
-      [editorBlocks[idx], editorBlocks[t]] = [editorBlocks[t], editorBlocks[idx]];
+    window.moveBlock = function(idx, dir) {
+      const target = idx + dir;
+      if (target < 0 || target >= editorBlocks.length) return;
+      [editorBlocks[idx], editorBlocks[target]] = [editorBlocks[target], editorBlocks[idx]];
       renderEditor();
     };
-    window.removeBlock = (idx) => { editorBlocks.splice(idx, 1); renderEditor(); };
 
+    window.removeBlock = function(idx) {
+      editorBlocks.splice(idx, 1);
+      if (editorBlocks.length === 0) editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: '' });
+      renderEditor();
+    };
+
+    window.updateBlockCaption = function(idx, val) {
+      if (editorBlocks[idx]) editorBlocks[idx].caption = val;
+    };
+
+    // 投稿保存
     window.savePost = async function() {
       if (!currentUser) return;
       const title = document.getElementById('post-title').value.trim();
-      const category = document.getElementById('post-category-select').value;
+      const category = document.getElementById('post-category').value || 'メモ';
       const cleanedBlocks = editorBlocks.filter(b => b.type !== 'text' || (b.content && b.content.trim().length > 0));
       if (!title && cleanedBlocks.length === 0) return;
 
-      const payload = { title, category, blocks: cleanedBlocks, updatedAt: Date.now() };
+      const payload = {
+        title,
+        category,
+        blocks: cleanedBlocks,
+        updatedAt: Date.now()
+      };
 
       if (editingPostId) {
         await update(ref(db, `users/${currentUser.uid}/posts/${editingPostId}`), payload);
@@ -654,68 +839,79 @@
         await set(newRef, {
           ...payload,
           parentId: replyParentId || null,
-          quoteId: quotePostId || null,
           createdAt: Date.now(),
           pinned: false,
-          bookmarked: false,
-          liked: false
+          bookmarked: false
         });
       }
-      closeComposer();
+      closePostModal();
     };
 
     function renderMediaHtml(url) {
       const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]{11})/);
       if (ytMatch) {
-        return `<div class="aspect-video w-full rounded-xl overflow-hidden my-2 border border-xborder"><iframe src="https://www.youtube.com/embed/${ytMatch[1]}" class="w-full h-full" allowfullscreen></iframe></div>`;
+        return `<div class="aspect-video w-full rounded-xl overflow-hidden my-2 border theme-border">
+          <iframe src="https://www.youtube.com/embed/${ytMatch[1]}" class="w-full h-full" allowfullscreen></iframe>
+        </div>`;
+      }
+      if (/\.(mp4|webm|ogg|mov)(\?|$)/i.test(url)) {
+        return `<video src="${url}" controls class="w-full max-h-96 rounded-xl my-2 bg-black"></video>`;
       }
       return `<img src="${url}" onclick="openLightbox('${url}')" class="max-h-96 rounded-xl object-contain my-2 cursor-zoom-in">`;
     }
 
-    // 投稿カードHTML生成
-    function buildPostItemHtml(post) {
+    // 単一ポストのHTML生成（親ポスト・スレッド子ポスト共通）
+    function buildPostItemHtml(post, isChild = false, hasNextSibling = false) {
       const dateStr = new Date(post.createdAt || Date.now()).toLocaleString('ja-JP');
       const blocksHtml = (post.blocks || []).map(b => {
-        if (b.type === 'text') return `<p class="whitespace-pre-wrap post-content-text my-1.5">${b.content}</p>`;
-        if (b.type === 'image') return `<img src="${b.url}" onclick="openLightbox('${b.url}')" class="max-h-96 rounded-2xl border border-xborder object-contain my-2 cursor-zoom-in">`;
-        if (b.type === 'embed') return renderMediaHtml(b.url);
+        if (b.type === 'text') {
+          const escaped = (b.content || '')
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/(#[^\s#]+)/g, '<span onclick="filterByTag(\'$1\')" class="theme-accent-text hover:underline cursor-pointer">$1</span>');
+          return `<p class="whitespace-pre-wrap post-text my-1.5">${escaped}</p>`;
+        }
+        if (b.type === 'image') {
+          return `<figure class="my-2">
+            <img src="${b.url}" onclick="openLightbox('${b.url}')" class="max-h-96 rounded-2xl border theme-border object-contain cursor-zoom-in">
+            ${b.caption ? `<figcaption class="text-xs theme-sub mt-1">${b.caption}</figcaption>` : ''}
+          </figure>`;
+        }
+        if (b.type === 'embed') {
+          return `<div class="my-2">${renderMediaHtml(b.url)}
+            ${b.caption ? `<div class="text-xs theme-sub mt-1">${b.caption}</div>` : ''}
+          </div>`;
+        }
         return '';
       }).join('');
 
-      // 引用ポストの表示
-      let quoteHtml = '';
-      if (post.quoteId) {
-        const qTarget = postsData.find(p => p.id === post.quoteId);
-        if (qTarget) {
-          const qText = (qTarget.blocks || []).find(b => b.type === 'text')?.content || qTarget.title || '';
-          quoteHtml = `<div class="mt-3 p-3 border border-xborder rounded-2xl bg-black/20 text-xs">
-            <span class="font-bold text-gray-400">@${profileData.handle}さんの引用ポスト</span>
-            <p class="mt-1 text-gray-300">${qText.slice(0, 120)}...</p>
-          </div>`;
-        }
-      }
-
       return `
-        <div class="flex gap-3 p-4 hover:bg-white/[0.015] transition">
-          <img src="${profileData.avatar}" class="w-10 h-10 rounded-full object-cover border border-xborder shrink-0">
+        <div class="flex gap-3 ${isChild ? 'pt-3' : ''}">
+          <div class="flex flex-col items-center shrink-0">
+            <img src="${profileData.avatar || DEFAULT_AVATAR}" class="w-10 h-10 rounded-full object-cover border theme-border">
+            ${hasNextSibling ? `<div class="w-0.5 flex-1 bg-gray-700 my-1"></div>` : ''}
+          </div>
           <div class="flex-1 min-w-0">
-            <div class="flex items-center justify-between text-xs text-gray-400 mb-1">
+            <div class="flex items-center justify-between text-xs theme-sub mb-1">
               <div class="flex items-center gap-1.5 flex-wrap">
-                <span class="font-bold text-white">${profileData.name}</span>
-                <span>@${profileData.handle}</span>
+                <span class="font-bold text-[14px]" style="color: var(--text-main)">${profileData.name}</span>
+                <span>${profileData.handle}</span>
                 <span>· ${dateStr}</span>
-                ${post.category && post.category !== '未分類' ? `<span class="px-2 py-0.5 rounded-full bg-white/5 border border-xborder text-[10px]">${post.category}</span>` : ''}
+                ${post.category ? `<span class="px-2 py-0.5 rounded-full bg-white/5 border theme-border text-[10px]">${post.category}</span>` : ''}
+                ${post.pinned ? '<span class="theme-accent-text font-bold">📌 固定</span>' : ''}
               </div>
             </div>
             ${post.title ? `<h3 class="font-bold text-base mb-1">${post.title}</h3>` : ''}
             <div>${blocksHtml}</div>
-            ${quoteHtml}
-            <div class="flex items-center gap-6 mt-3 text-xs text-gray-400">
-              <button onclick="openComposer('${post.id}')" class="hover:text-sky-400 flex items-center gap-1">💬 返信</button>
-              <button onclick="openComposer(null, null, '${post.id}')" class="hover:text-sky-400">🔄 引用</button>
-              <button onclick="toggleLike('${post.id}', ${!!post.liked})" class="hover:text-pink-500">${post.liked ? '❤️ いいね済' : '🤍 いいね'}</button>
-              <button onclick="toggleBookmark('${post.id}', ${!!post.bookmarked})" class="hover:text-amber-400">${post.bookmarked ? '★' : '☆'}</button>
-              <button onclick="openComposer(null, '${post.id}')" class="hover:text-sky-400">編集</button>
+            <!-- アクションバー -->
+            <div class="flex items-center gap-5 mt-3 text-xs theme-sub">
+              <button onclick="openPostModal('${post.parentId || post.id}')" class="hover:text-sky-400 flex items-center gap-1" title="このスレッドに追記">
+                💬 <span>スレッド追記</span>
+              </button>
+              <button onclick="toggleBookmark('${post.id}', ${!!post.bookmarked})" class="hover:text-amber-400">
+                ${post.bookmarked ? '★ 保存済' : '☆ ブックマーク'}
+              </button>
+              ${!isChild ? `<button onclick="togglePin('${post.id}', ${!!post.pinned})" class="hover:text-sky-400">📌 固定</button>` : ''}
+              <button onclick="startEdit('${post.id}')" class="hover:text-sky-400">編集</button>
               <button onclick="deletePost('${post.id}')" class="hover:text-red-400">削除</button>
             </div>
           </div>
@@ -723,119 +919,114 @@
       `;
     }
 
-    // メディアギャラリー表示（グリッド）
-    function renderMediaGallery() {
-      const list = document.getElementById('feed-list');
-      const mediaItems = [];
-      postsData.forEach(p => {
-        (p.blocks || []).forEach(b => {
-          if (b.type === 'image') mediaItems.push(b.url);
-        });
-      });
-
-      if (mediaItems.length === 0) {
-        list.innerHTML = `<div class="p-12 text-center text-sm text-gray-500">保存された写真・画像はありません</div>`;
-        return;
-      }
-
-      list.innerHTML = `
-        <div class="p-4 grid grid-cols-2 sm:grid-cols-3 gap-2">
-          ${mediaItems.map(url => `<div class="aspect-square bg-xcard rounded-xl overflow-hidden border border-xborder cursor-pointer"><img src="${url}" onclick="openLightbox('${url}')" class="w-full h-full object-cover hover:scale-105 transition"></div>`).join('')}
-        </div>
-      `;
-    }
-
+    // タイムライン＆スレッドツリー描画
     function renderFeed() {
       const list = document.getElementById('feed-list');
       const query = document.getElementById('search-input').value.trim().toLowerCase();
-
-      if (currentFilter === 'media') {
-        renderMediaGallery();
-        return;
-      }
-
       list.innerHTML = '';
-      const filtered = postsData.filter(p => {
-        if (currentCategory !== 'すべて' && p.category !== currentCategory) return false;
-        if (currentFilter === 'bookmark' && !p.bookmarked) return false;
-        if (currentFilter === 'like' && !p.liked) return false;
+
+      const childrenMap = {};
+      postsData.forEach(p => {
+        if (p.parentId) {
+          if (!childrenMap[p.parentId]) childrenMap[p.parentId] = [];
+          childrenMap[p.parentId].push(p);
+        }
+      });
+      Object.values(childrenMap).forEach(arr => arr.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)));
+
+      const rootPosts = postsData.filter(p => !p.parentId);
+      rootPosts.sort((a, b) => {
+        if (!!b.pinned !== !!a.pinned) return b.pinned ? 1 : -1;
+        return (b.createdAt || 0) - (a.createdAt || 0);
+      });
+
+      const filteredRoots = rootPosts.filter(post => {
+        const threadPosts = [post, ...(childrenMap[post.id] || [])];
+        if (currentCategory !== 'すべて' && post.category !== currentCategory) return false;
+        if (currentFilter === 'bookmark' && !threadPosts.some(tp => tp.bookmarked)) return false;
+        if (currentFilter === 'media' && !threadPosts.some(tp => (tp.blocks || []).some(b => b.type !== 'text'))) return false;
         if (query) {
-          const txt = ((p.title || '') + ' ' + (p.blocks || []).map(b => b.content || '').join(' ')).toLowerCase();
-          return txt.includes(query);
+          const allText = threadPosts.map(tp => (tp.title || '') + ' ' + (tp.blocks || []).map(b => b.content || b.caption || '').join(' ')).join(' ').toLowerCase();
+          return allText.includes(query);
         }
         return true;
       });
 
-      filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-
-      if (filtered.length === 0) {
-        list.innerHTML = `<div class="p-12 text-center text-sm text-gray-500">ポストがありません</div>`;
+      if (filteredRoots.length === 0) {
+        list.innerHTML = `<div class="p-12 text-center text-sm theme-sub">表示できるポストがありません（右下の「＋」ボタンから投稿できます）</div>`;
         return;
       }
 
-      filtered.forEach(post => {
+      filteredRoots.forEach(root => {
+        const replies = childrenMap[root.id] || [];
         const article = document.createElement('article');
-        article.innerHTML = buildPostItemHtml(post);
+        article.className = "post-card-pad hover:bg-white/[0.02] transition";
+
+        let html = buildPostItemHtml(root, false, replies.length > 0);
+        replies.forEach((rep, idx) => {
+          html += buildPostItemHtml(rep, true, idx < replies.length - 1);
+        });
+
+        article.innerHTML = html;
         list.appendChild(article);
       });
     }
 
     function renderTags() {
-      const counts = {};
+      const tagCounts = {};
       postsData.forEach(p => {
         (p.blocks || []).forEach(b => {
           if (b.type === 'text' && b.content) {
-            (b.content.match(/#[^\s#]+/g) || []).forEach(t => counts[t] = (counts[t] || 0) + 1);
+            (b.content.match(/#[^\s#]+/g) || []).forEach(t => { tagCounts[t] = (tagCounts[t] || 0) + 1; });
           }
         });
       });
-      const entries = Object.entries(counts);
-      document.getElementById('tag-list').innerHTML = entries.length ? entries.map(([t, c]) => `<span class="px-2 py-0.5 rounded-full bg-white/5 accent-text font-bold">${t} (${c})</span>`).join('') : 'タグ未設定';
+      const container = document.getElementById('tag-list');
+      const entries = Object.entries(tagCounts);
+      if (entries.length === 0) return;
+      container.innerHTML = entries.map(([tag, count]) =>
+        `<button onclick="filterByTag('${tag}')" class="px-2.5 py-1 rounded-full bg-white/5 theme-accent-text hover:bg-white/10 font-bold">${tag} (${count})</button>`
+      ).join('');
     }
 
-    window.setFilter = (f) => {
-      currentFilter = f;
-      document.getElementById('header-title').textContent = f === 'all' ? 'ホーム' : f === 'like' ? 'いいね一覧' : f === 'bookmark' ? 'ブックマーク' : 'メディアギャラリー';
+    window.filterByTag = function(tag) {
+      document.getElementById('search-input').value = tag;
       renderFeed();
     };
 
-    window.toggleLike = (id, cur) => update(ref(db, `users/${currentUser.uid}/posts/${id}`), { liked: !cur });
-    window.toggleBookmark = (id, cur) => update(ref(db, `users/${currentUser.uid}/posts/${id}`), { bookmarked: !cur });
-    window.deletePost = (id) => { if (confirm('削除しますか？')) remove(ref(db, `users/${currentUser.uid}/posts/${id}`)); };
-    window.openLightbox = (url) => { document.getElementById('lightbox-img').src = url; document.getElementById('lightbox').classList.remove('hidden'); };
-
-    // バックアップエクスポート
-    window.exportData = function() {
-      const data = { posts: postsData, categories, profile: profileData };
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `x-note-backup-${Date.now()}.json`;
-      a.click();
+    window.setFilter = function(f) {
+      currentFilter = f;
+      document.getElementById('header-title').textContent =
+        f === 'all' ? 'ホーム' : f === 'bookmark' ? 'ブックマーク' : 'メディア';
+      renderFeed();
     };
 
-    // バックアップインポート（復元）
-    window.importData = function(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = async (evt) => {
-        try {
-          const json = JSON.parse(evt.target.result);
-          if (json.posts && currentUser) {
-            await set(ref(db, `users/${currentUser.uid}/posts`), json.posts.reduce((acc, p) => ({ ...acc, [p.id]: p }), {}));
-            if (json.categories) await set(ref(db, `users/${currentUser.uid}/categories`), json.categories);
-            if (json.profile) await set(ref(db, `users/${currentUser.uid}/profile`), json.profile);
-            alert('データを正常に復元しました！');
-            location.reload();
-          }
-        } catch (err) { alert('無効なバックアップファイルです'); }
-      };
-      reader.readAsText(file);
+    window.togglePin = (id, cur) => update(ref(db, `users/${currentUser.uid}/posts/${id}`), { pinned: !cur });
+    window.toggleBookmark = (id, cur) => update(ref(db, `users/${currentUser.uid}/posts/${id}`), { bookmarked: !cur });
+    window.deletePost = (id) => { if (confirm('このポストを削除しますか？')) remove(ref(db, `users/${currentUser.uid}/posts/${id}`)); };
+
+    window.startEdit = function(id) {
+      const post = postsData.find(p => p.id === id);
+      if (!post) return;
+      editingPostId = id;
+      replyParentId = post.parentId || null;
+      document.getElementById('post-title').value = post.title || '';
+      if (post.category) document.getElementById('post-category').value = post.category;
+      editorBlocks = JSON.parse(JSON.stringify(post.blocks || [{ id: crypto.randomUUID(), type: 'text', content: '' }]));
+      document.getElementById('modal-mode-label').textContent = 'ポストを編集';
+      document.getElementById('submit-btn').textContent = '更新する';
+      document.getElementById('reply-parent-info').classList.add('hidden');
+      document.getElementById('post-modal').classList.remove('hidden');
+      renderEditor();
+    };
+
+    window.openLightbox = function(url) {
+      document.getElementById('lightbox-img').src = url;
+      document.getElementById('lightbox').classList.remove('hidden');
     };
 
     document.getElementById('search-input').addEventListener('input', renderFeed);
+
     renderCategories();
     renderEditor();
     lucide.createIcons();
