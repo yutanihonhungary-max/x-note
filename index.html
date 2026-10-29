@@ -53,9 +53,9 @@
     .post-card-pad {
       padding: var(--post-padding);
     }
-    /* 長文折りたたみ用のマスク処理 */
+    /* 長文折りたたみ用のマスク処理（テキスト部分にのみ適用） */
     .post-collapsed {
-      max-height: 180px;
+      max-height: 165px;
       overflow: hidden;
       position: relative;
       mask-image: linear-gradient(to bottom, black 65%, transparent 100%);
@@ -90,7 +90,7 @@
     コピーしました
   </div>
 
-  <!-- ★ 複数選択モード時の下部一括コピーバー -->
+  <!-- 複数選択モード時の下部一括コピーバー -->
   <div id="bulk-action-bar" class="hidden fixed bottom-16 md:bottom-6 left-1/2 -translate-x-1/2 z-40 theme-card border theme-border rounded-full px-4 py-2 shadow-2xl flex items-center gap-3 backdrop-blur-md">
     <span id="bulk-count-label" class="text-xs font-bold theme-accent-text whitespace-nowrap">0件選択中</span>
     <button onclick="selectAllVisiblePosts()" class="text-xs px-2.5 py-1 rounded-full bg-white/5 hover:bg-white/10 transition whitespace-nowrap">全選択</button>
@@ -194,7 +194,7 @@
               <i data-lucide="search" class="w-4 h-4 theme-sub absolute left-3 top-1/2 -translate-y-1/2"></i>
               <input id="search-input" type="text" placeholder="検索や #タグ..." class="w-full theme-card border theme-border rounded-full pl-9 pr-3 py-1.5 text-xs outline-none">
             </div>
-            <!-- ★ 複数選択してまとめてコピーするモード切替ボタン -->
+            <!-- 複数選択してまとめてコピーするモード切替ボタン -->
             <button id="select-mode-btn" onclick="toggleSelectMode()" class="px-3 py-1.5 rounded-full border theme-border text-xs font-bold theme-sub hover:text-white hover:bg-white/5 transition flex items-center gap-1.5 shrink-0" title="複数のポストを選択してまとめてコピー">
               <i data-lucide="check-square" class="w-3.5 h-3.5"></i>
               <span class="hidden sm:inline">複数選択</span>
@@ -247,12 +247,12 @@
       <div id="feed-list" class="divide-y theme-border min-h-[50vh]"></div>
     </main>
 
-    <!-- ★ 境界線ドラッグリサイザー（マウスで左右に引っ張って右サイドバーの幅を自由に変更可能） -->
+    <!-- 境界線ドラッグリサイザー -->
     <div id="sidebar-resizer" class="hidden lg:flex w-1.5 cursor-col-resize items-center justify-center hover:bg-sky-500/40 active:bg-sky-500 transition select-none shrink-0" title="左右にドラッグしてタブ管理の幅を調整">
       <div class="w-0.5 h-10 bg-zinc-700 rounded-full"></div>
     </div>
 
-    <!-- ★ 右サイドバー（PC用：コンパクト＆スライダーで幅を自由調整できる「タブ管理」） -->
+    <!-- 右サイドバー（PC用：コンパクト＆スライダーで幅を自由調整できる「タブ管理」） -->
     <aside id="right-sidebar" style="width: var(--right-sidebar-w);" class="hidden lg:block p-2.5 sticky top-0 h-screen overflow-y-auto shrink-0">
       <div class="theme-card rounded-2xl p-3 border theme-border space-y-2.5">
         <div class="flex items-center justify-between gap-1">
@@ -318,19 +318,15 @@
       </div>
 
       <div class="p-4 space-y-3 max-h-[75vh] overflow-y-auto">
-        <!-- スレッド返信先表示 -->
         <div id="reply-parent-info" class="hidden text-xs px-3 py-2 rounded-lg bg-white/5 border theme-border theme-sub"></div>
 
-        <!-- タブ選択＆タイトル -->
         <div class="flex flex-wrap items-center gap-2">
           <select id="post-category" class="theme-card border theme-border rounded-full px-3 py-1 text-xs font-bold outline-none"></select>
           <input id="post-title" type="text" placeholder="タイトル（任意）" class="flex-1 bg-transparent text-sm font-bold placeholder-gray-500 outline-none border-b theme-border pb-1">
         </div>
 
-        <!-- ブロック一覧 -->
         <div id="editor-blocks" class="space-y-3"></div>
 
-        <!-- 引用リツイート対象プレビュー枠 -->
         <div id="quote-preview-container" class="hidden pt-2">
           <div class="flex items-center justify-between text-xs text-emerald-400 font-bold mb-1 px-1">
             <span>🔁 引用リツイート元（自動アーカイブ保存対象）</span>
@@ -355,7 +351,7 @@
             <i data-lucide="repeat-2" class="w-4 h-4"></i>
             <span>本家𝕏を引用</span>
           </button>
-          <button onclick="importTweetAsPost()" class="p-2 rounded-full hover:bg-white/10 theme-accent-text transition flex items-center gap-1 text-xs font-bold" title="本家XのツイートURLから本文・画像・引用元を自分の投稿として取り込む">
+          <button onclick="importTweetAsPost()" class="p-2 rounded-full hover:bg-white/10 theme-accent-text transition flex items-center gap-1 text-xs font-bold" title="本家XのツイートURLから本文・画像・動画・引用元を自分の投稿として取り込む">
             <span class="font-black text-sm leading-none">𝕏</span>
             <span>ツイート取込</span>
           </button>
@@ -535,11 +531,12 @@
     let quotedPostId = null;
     let quotedExternalUrl = null;
 
-    // ★ 複数選択＆一括コピー用ステート
     let isSelectMode = false;
     const selectedPostIds = new Set();
 
+    // 自分の長文ポスト展開状態 ＆ 本家Xのツイートカード長文展開状態
     const expandedPostIds = new Set();
+    const expandedTweetCardIds = new Set();
     const tweetCache = {};
 
     let profileData = {
@@ -679,9 +676,7 @@
       if (currentUser) set(ref(db, `users/${currentUser.uid}/settings`), themeSettings);
     };
 
-    // =========================================================================
-    // ★ 右サイドバー（タブ管理）のスライダー＆ドラッグ境界線による幅調整
-    // =========================================================================
+    // 右サイドバー（タブ管理）のスライダー＆ドラッグ境界線による幅調整
     window.changeRightSidebarWidth = function(val, persist = false) {
       const w = Math.min(420, Math.max(160, Number(val) || 230));
       themeSettings.rightSidebarWidth = w;
@@ -719,9 +714,7 @@
       }
     });
 
-    // =========================================================================
-    // ★ 複数ポスト選択 ＆ 一括コピー機能
-    // =========================================================================
+    // 複数ポスト選択 ＆ 一括コピー機能
     window.toggleSelectMode = function(forceState) {
       isSelectMode = typeof forceState === 'boolean' ? forceState : !isSelectMode;
       if (!isSelectMode) selectedPostIds.clear();
@@ -806,9 +799,7 @@
       toggleSelectMode(false);
     };
 
-    // =========================================================================
     // タブ管理（ドラッグ並び替え＆アイコン操作）
-    // =========================================================================
     let dragSrcCatIdx = null;
 
     function buildCategoryManageItemsHtml() {
@@ -833,13 +824,11 @@
             <span onclick="selectCategory('${cat}')" class="font-bold text-xs truncate cursor-pointer hover:underline flex-1 ${currentCategory === cat ? 'theme-accent-text' : ''}">${cat}</span>
           </div>
           <div class="flex items-center gap-0.5 shrink-0">
-            <!-- 名前変更（ペンアイコン） -->
             <button onclick="renameCategory('${cat}')" class="p-1 rounded-full hover:bg-sky-500/15 theme-sub hover:text-sky-400 transition" title="名前変更">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"/>
               </svg>
             </button>
-            <!-- 削除（ゴミ箱アイコン） -->
             <button onclick="deleteCategory('${cat}')" class="p-1 rounded-full hover:bg-red-500/15 theme-sub hover:text-red-400 transition" title="削除">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/>
@@ -1095,7 +1084,7 @@
       quotedPostId = null;
       quotedExternalUrl = url.trim();
       const tid = extractTweetId(quotedExternalUrl);
-      if (tid) await fetchTweetData(tid);
+      if (tid) await fetchTweetData(tid, true);
       document.getElementById('modal-mode-label').textContent = '本家𝕏を引用リツイート';
       renderQuotePreviewInModal();
     };
@@ -1158,90 +1147,245 @@
       closeProfileModal();
     };
 
-    // 本家X（Twitter）のツイート内容をFirebaseへ永続保存
+    // =========================================================================
+    // ★ 本家X（Twitter）の全文＆動画ストリーム抽出・再生フォールバック・折りたたみ処理
+    // =========================================================================
     function extractTweetId(url) {
       const m = (url || '').match(/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)/i);
       return m ? m[1] : null;
     }
 
+    // 長文ツイート（Note Tweet / Article / raw_text）も含めて切れずに全文を抽出する
+    function extractFullTweetText(t) {
+      if (!t) return '';
+      const candidates = [
+        t.raw_text?.text,
+        t.text,
+        t.full_text,
+        t.note_tweet?.text
+      ].filter(s => typeof s === 'string' && s.trim().length > 0);
+
+      let longest = candidates.sort((a, b) => b.length - a.length)[0] || '';
+
+      if (t.article) {
+        const artTitle = t.article.title ? `【${t.article.title}】\n` : '';
+        const artBody = t.article.content || t.article.preview_text || '';
+        if ((artTitle + artBody).length > longest.length) {
+          longest = artTitle + artBody;
+        }
+      }
+      return longest;
+    }
+
+    // 動画・GIF・複数メディア配列からすべての写真と最高画質MP4動画URLを取りこぼさず抽出する
+    function extractTweetMedia(t) {
+      const photos = [];
+      const videos = [];
+      const seenPhotoUrls = new Set();
+      const seenVideoUrls = new Set();
+
+      const addPhoto = (url) => {
+        if (url && !seenPhotoUrls.has(url)) {
+          seenPhotoUrls.add(url);
+          photos.push({ url });
+        }
+      };
+
+      const addVideo = (vObj) => {
+        if (!vObj) return;
+        let bestUrl = vObj.url || '';
+        // variantsがある場合は最もビットレートが高いMP4を選択
+        if (Array.isArray(vObj.variants)) {
+          const mp4s = vObj.variants
+            .filter(vr => vr.url && (vr.content_type === 'video/mp4' || /\.mp4(\?|$)/i.test(vr.url)))
+            .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+          if (mp4s.length > 0) bestUrl = mp4s[0].url;
+        }
+        if (bestUrl && !seenVideoUrls.has(bestUrl)) {
+          seenVideoUrls.add(bestUrl);
+          videos.push({
+            url: bestUrl,
+            thumbnail_url: vObj.thumbnail_url || vObj.poster || '',
+            type: vObj.type || 'video'
+          });
+        }
+      };
+
+      if (t.media) {
+        (t.media.photos || []).forEach(p => addPhoto(p.url));
+        (t.media.videos || []).forEach(v => addVideo(v));
+        (t.media.all || []).forEach(m => {
+          if (m.type === 'photo' || m.type === 'image') addPhoto(m.url);
+          else if (m.type === 'video' || m.type === 'gif' || m.type === 'animated_gif') addVideo(m);
+        });
+      }
+      // vxtwitter等のextendedMediaにも対応
+      if (Array.isArray(t.media_extended)) {
+        t.media_extended.forEach(m => {
+          if (m.type === 'image' || m.type === 'photo') addPhoto(m.url);
+          else if (m.type === 'video' || m.type === 'gif') addVideo(m);
+        });
+      }
+
+      return { photos, videos };
+    }
+
     function sanitizeTweetSnapshot(t) {
       if (!t) return null;
       return {
-        id: String(t.id || ''),
-        url: t.url || `https://x.com/${t.author?.screen_name || 'i'}/status/${t.id}`,
-        text: t.text || '',
-        created_timestamp: t.created_timestamp || null,
+        id: String(t.id || t.tweetID || ''),
+        url: t.url || t.tweetURL || `https://x.com/${t.author?.screen_name || t.user_screen_name || 'i'}/status/${t.id || t.tweetID}`,
+        text: extractFullTweetText(t),
+        created_timestamp: t.created_timestamp || t.date_epoch || null,
         author: {
-          name: t.author?.name || 'X User',
-          screen_name: t.author?.screen_name || 'user',
-          avatar_url: t.author?.avatar_url || DEFAULT_AVATAR
+          name: t.author?.name || t.user_name || 'X User',
+          screen_name: t.author?.screen_name || t.user_screen_name || 'user',
+          avatar_url: t.author?.avatar_url || t.user_profile_image_url || DEFAULT_AVATAR
         },
-        media: {
-          photos: (t.media?.photos || []).map(p => ({ url: p.url })),
-          videos: (t.media?.videos || []).map(v => ({ url: v.url, thumbnail_url: v.thumbnail_url || '' }))
-        },
-        quote: t.quote ? sanitizeTweetSnapshot(t.quote) : null,
+        media: extractTweetMedia(t),
+        quote: (t.quote || t.qrt) ? sanitizeTweetSnapshot(t.quote || t.qrt) : null,
+        schemaVersion: 2,
         savedAt: Date.now()
       };
     }
 
-    async function fetchTweetData(tweetId) {
-      if (tweetCache[tweetId]) return tweetCache[tweetId];
+    async function fetchTweetData(tweetId, forceRefresh = false) {
+      const cached = tweetCache[tweetId];
+      // 既に最新スキーマ（schemaVersion: 2）でキャッシュ済みならそれを返す
+      if (cached && cached.schemaVersion === 2 && !forceRefresh) {
+        return cached;
+      }
+
+      // 1. fxtwitter APIから取得（全文・動画・引用を含む）
       try {
         const res = await fetch(`https://api.fxtwitter.com/status/${tweetId}`);
-        if (!res.ok) throw new Error('Fetch failed');
-        const data = await res.json();
-        if (data && data.tweet) {
-          const snapshot = sanitizeTweetSnapshot(data.tweet);
-          tweetCache[tweetId] = snapshot;
-          if (currentUser) {
-            set(ref(db, `users/${currentUser.uid}/tweetSnapshots/${tweetId}`), snapshot);
-            if (snapshot.quote && snapshot.quote.id) {
-              tweetCache[snapshot.quote.id] = snapshot.quote;
-              set(ref(db, `users/${currentUser.uid}/tweetSnapshots/${snapshot.quote.id}`), snapshot.quote);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.tweet) {
+            const snapshot = sanitizeTweetSnapshot(data.tweet);
+            tweetCache[tweetId] = snapshot;
+            if (currentUser) {
+              set(ref(db, `users/${currentUser.uid}/tweetSnapshots/${tweetId}`), snapshot);
+              if (snapshot.quote && snapshot.quote.id) {
+                tweetCache[snapshot.quote.id] = snapshot.quote;
+                set(ref(db, `users/${currentUser.uid}/tweetSnapshots/${snapshot.quote.id}`), snapshot.quote);
+              }
             }
+            return snapshot;
           }
-          return snapshot;
         }
       } catch (e) {
-        console.error('Tweet fetch error:', e);
+        console.warn('fxtwitter fetch fallback:', e);
       }
-      return null;
+
+      // 2. フォールバックとして vxtwitter API から取得
+      try {
+        const res2 = await fetch(`https://api.vxtwitter.com/Twitter/status/${tweetId}`);
+        if (res2.ok) {
+          const data2 = await res2.json();
+          if (data2 && (data2.tweetID || data2.text)) {
+            const snapshot = sanitizeTweetSnapshot(data2);
+            tweetCache[tweetId] = snapshot;
+            if (currentUser) {
+              set(ref(db, `users/${currentUser.uid}/tweetSnapshots/${tweetId}`), snapshot);
+            }
+            return snapshot;
+          }
+        }
+      } catch (e2) {
+        console.error('vxtwitter fetch error:', e2);
+      }
+
+      return cached || null;
     }
 
-    function renderTweetMediaGrid(media) {
+    // ★ XのMP4動画がリファラー制限等で再生失敗した場合の自動フォールバック処理
+    window.handleTweetVideoError = function(videoEl, rawUrl, tweetId) {
+      const step = Number(videoEl.getAttribute('data-retry-step') || '0');
+      if (step === 0 && rawUrl) {
+        // ステップ1: video.twimg.comの直リンクがブロックされた場合、fxtwitterのストリームプロキシ経由に切り替え
+        videoEl.setAttribute('data-retry-step', '1');
+        if (tweetId) {
+          videoEl.src = `https://d.fxtwitter.com/i/status/${tweetId}.mp4`;
+          videoEl.load();
+          return;
+        }
+      }
+      if (step <= 1 && tweetId) {
+        // ステップ2: 公式シンジケーション埋め込みプレイヤーへフォールバック（確実に再生可能）
+        videoEl.setAttribute('data-retry-step', '2');
+        const container = videoEl.parentElement;
+        if (container) {
+          container.innerHTML = `
+            <div class="w-full rounded-xl overflow-hidden my-2 border theme-border bg-black">
+              <iframe src="https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&theme=dark&dnt=true"
+                class="w-full min-h-[360px] border-0" allowfullscreen loading="lazy"></iframe>
+            </div>
+          `;
+        }
+      }
+    };
+
+    function renderTweetMediaGrid(media, tweetId = '') {
       if (!media) return '';
       let html = '';
       if (media.photos && media.photos.length > 0) {
         const cols = media.photos.length > 1 ? 'grid-cols-2' : 'grid-cols-1';
         html += `<div class="grid ${cols} gap-1.5 my-2 rounded-xl overflow-hidden border theme-border">
-          ${media.photos.map(p => `<img src="${p.url}" onclick="event.stopPropagation(); openLightbox('${p.url}')" class="w-full max-h-72 object-cover cursor-zoom-in">`).join('')}
+          ${media.photos.map(p => `<img src="${p.url}" referrerpolicy="no-referrer" onclick="event.stopPropagation(); openLightbox('${p.url}')" class="w-full max-h-80 object-cover cursor-zoom-in">`).join('')}
         </div>`;
       }
       if (media.videos && media.videos.length > 0) {
         html += media.videos.map(v => `
-          <video src="${v.url}" poster="${v.thumbnail_url || ''}" controls onclick="event.stopPropagation()" class="w-full max-h-80 rounded-xl my-2 bg-black border theme-border"></video>
+          <div class="my-2 rounded-xl overflow-hidden border theme-border bg-black" onclick="event.stopPropagation()">
+            <video controls playsinline preload="metadata" referrerpolicy="no-referrer"
+              poster="${v.thumbnail_url || ''}"
+              onerror="handleTweetVideoError(this, '${v.url}', '${tweetId}')"
+              class="w-full max-h-[420px] mx-auto bg-black">
+              <source src="${v.url}" type="video/mp4">
+              お使いのブラウザは動画再生に対応していません。
+            </video>
+          </div>
         `).join('');
       }
       return html;
     }
 
-    function buildNativeTweetCardHtml(t, isQuoted = false) {
+    // ★ 本家Xツイートカード自体の長文「さらに表示 / 折りたたむ」切り替え
+    window.toggleExpandTweetCard = function(cardKey, e) {
+      if (e) e.stopPropagation();
+      if (expandedTweetCardIds.has(cardKey)) {
+        expandedTweetCardIds.delete(cardKey);
+      } else {
+        expandedTweetCardIds.add(cardKey);
+      }
+      renderFeed();
+    };
+
+    function buildNativeTweetCardHtml(t, isQuoted = false, parentContextKey = 'root') {
       if (!t) return '';
+      const cardKey = `${parentContextKey}_${t.id || 'tw'}_${isQuoted ? 'q' : 'm'}`;
       const dateStr = t.created_timestamp
         ? new Date(t.created_timestamp * 1000).toLocaleString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
         : '';
-      const escapedText = (t.text || '')
+
+      const rawText = t.text || '';
+      const lineCount = rawText.split('\n').length;
+      const isLongTweet = rawText.length > 180 || lineCount > 5;
+      const isExpanded = expandedTweetCardIds.has(cardKey);
+      const shouldCollapse = isLongTweet && !isExpanded;
+
+      const escapedText = rawText
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="theme-accent-text hover:underline break-all">$1</a>');
 
-      const quoteHtml = (t.quote && !isQuoted) ? buildNativeTweetCardHtml(t.quote, true) : '';
+      const quoteHtml = (t.quote && !isQuoted) ? buildNativeTweetCardHtml(t.quote, true, cardKey) : '';
 
       return `
         <div class="${isQuoted ? 'mt-2.5 p-3 rounded-xl bg-white/[0.03]' : 'my-2 p-3.5 rounded-2xl theme-card'} border theme-border transition">
           <div class="flex items-center justify-between gap-2 mb-1.5">
             <div class="flex items-center gap-2 min-w-0">
-              <img src="${t.author?.avatar_url || DEFAULT_AVATAR}" class="${isQuoted ? 'w-5 h-5' : 'w-8 h-8'} rounded-full object-cover border theme-border shrink-0">
+              <img src="${t.author?.avatar_url || DEFAULT_AVATAR}" referrerpolicy="no-referrer" class="${isQuoted ? 'w-5 h-5' : 'w-8 h-8'} rounded-full object-cover border theme-border shrink-0">
               <div class="flex items-center gap-1.5 flex-wrap min-w-0 text-xs">
                 <span class="font-bold truncate" style="color: var(--text-main)">${t.author?.name || 'X User'}</span>
                 <span class="theme-sub truncate">@${t.author?.screen_name || ''}</span>
@@ -1249,12 +1393,22 @@
               </div>
             </div>
             <div class="flex items-center gap-1 shrink-0">
-              <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" title="アプリ内にアーカイブ保存済み">保存済</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" title="アプリ内に全文アーカイブ保存済み">保存済</span>
               <a href="${t.url || `https://x.com/i/status/${t.id}`}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="text-[11px] theme-sub hover:text-white px-2 py-0.5 rounded-full border theme-border" title="本家Xで開く">𝕏 ↗</a>
             </div>
           </div>
-          <div class="whitespace-pre-wrap post-text leading-relaxed">${escapedText}</div>
-          ${renderTweetMediaGrid(t.media)}
+
+          <!-- ツイート本文（長文時は折りたたみマスク適用） -->
+          <div class="whitespace-pre-wrap post-text leading-relaxed ${shouldCollapse ? 'post-collapsed' : ''}">${escapedText}</div>
+
+          ${isLongTweet ? `
+            <button onclick="toggleExpandTweetCard('${cardKey}', event)" class="mt-1 text-xs font-bold theme-accent-text hover:underline block">
+              ${shouldCollapse ? 'さらに表示（全文）' : '折りたたむ'}
+            </button>
+          ` : ''}
+
+          <!-- 添付写真・動画プレイヤー（折りたたみマスクの外に配置し常に再生可能にする） -->
+          ${renderTweetMediaGrid(t.media, t.id)}
           ${quoteHtml}
         </div>
       `;
@@ -1273,6 +1427,11 @@
         .map(b => b.content || '')
         .join('\n');
 
+      const cardKey = `internal_quote_${qPost.id}`;
+      const isLong = textSnippet.length > 180 || textSnippet.split('\n').length > 5;
+      const isExpanded = expandedTweetCardIds.has(cardKey);
+      const shouldCollapse = isLong && !isExpanded;
+
       const escaped = textSnippet
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -1290,7 +1449,12 @@
             </div>
           </div>
           ${qPost.title ? `<div class="font-bold text-sm mb-1">${qPost.title}</div>` : ''}
-          <div class="whitespace-pre-wrap text-sm leading-relaxed line-clamp-4">${escaped}</div>
+          <div class="whitespace-pre-wrap text-sm leading-relaxed ${shouldCollapse ? 'post-collapsed' : ''}">${escaped}</div>
+          ${isLong ? `
+            <button onclick="toggleExpandTweetCard('${cardKey}', event)" class="mt-1 text-xs font-bold theme-accent-text hover:underline block">
+              ${shouldCollapse ? 'さらに表示' : '折りたたむ'}
+            </button>
+          ` : ''}
           ${firstImage ? `<img src="${firstImage.url}" onclick="event.stopPropagation(); openLightbox('${firstImage.url}')" class="mt-2 max-h-56 rounded-xl border theme-border object-cover">` : ''}
         </div>
       `;
@@ -1326,9 +1490,10 @@
         node.setAttribute('data-loaded', 'true');
         const tid = node.getAttribute('data-tweet-id');
         const fallbackUrl = node.getAttribute('data-tweet-url');
+        const ctxKey = node.getAttribute('data-ctx-key') || 'card';
         const tweet = await fetchTweetData(tid);
         if (tweet) {
-          node.innerHTML = buildNativeTweetCardHtml(tweet, false);
+          node.innerHTML = buildNativeTweetCardHtml(tweet, false, ctxKey);
         } else {
           node.innerHTML = `<a href="${fallbackUrl}" target="_blank" rel="noopener noreferrer" class="block my-2 p-3 rounded-xl border theme-border text-xs theme-accent-text hover:underline">𝕏 ポストを開く: ${fallbackUrl}</a>`;
         }
@@ -1343,7 +1508,7 @@
         alert("有効なX（Twitter）のステータスURLではありません。");
         return;
       }
-      const tweet = await fetchTweetData(tid);
+      const tweet = await fetchTweetData(tid, true);
       if (!tweet) {
         alert("ツイート情報の取得に失敗しました（非公開アカウントまたは削除済みの可能性があります）。");
         return;
@@ -1365,7 +1530,7 @@
       }
       if (tweet.media?.videos) {
         tweet.media.videos.forEach(v => {
-          editorBlocks.push({ id: crypto.randomUUID(), type: 'embed', url: v.url, caption: '' });
+          editorBlocks.push({ id: crypto.randomUUID(), type: 'embed', url: v.url, caption: '', tweetId: tweet.id, thumbnail_url: v.thumbnail_url || '' });
         });
       }
 
@@ -1405,7 +1570,7 @@
           wrapper.innerHTML = controls;
           const ta = document.createElement('textarea');
           ta.className = "w-full bg-transparent outline-none text-sm leading-relaxed resize-none min-h-[85px]";
-          ta.placeholder = "いまどうしてる？（Xのリンクを貼ると内容ごとアプリに永続保存されます / Ctrl+V スクショ対応）";
+          ta.placeholder = "いまどうしてる？（Xのリンクを貼ると全文＆動画ごとアプリに永続保存されます / Ctrl+V スクショ対応）";
           ta.value = block.content;
           ta.addEventListener('input', (e) => {
             editorBlocks[idx].content = e.target.value;
@@ -1430,7 +1595,7 @@
               class="w-full mt-1 bg-transparent text-xs theme-sub border-b border-transparent focus:border-gray-600 outline-none">
           `;
         } else if (block.type === 'embed') {
-          wrapper.innerHTML = controls + renderMediaHtml(block.url, block.tweetSnapshot) + `
+          wrapper.innerHTML = controls + renderMediaHtml(block.url, block.tweetSnapshot, `editor_${idx}`) + `
             <input type="text" placeholder="キャプション・メモ（任意）" value="${block.caption || ''}"
               oninput="updateBlockCaption(${idx}, this.value)"
               class="w-full mt-1 bg-transparent text-xs theme-sub border-b border-transparent focus:border-gray-600 outline-none">
@@ -1528,7 +1693,7 @@
       const tid = extractTweetId(formatted);
       let tweetSnapshot = null;
       if (tid) {
-        tweetSnapshot = await fetchTweetData(tid);
+        tweetSnapshot = await fetchTweetData(tid, true);
       }
       insertBlockAtCursor({ id: crypto.randomUUID(), type: 'embed', url: formatted, caption: '', tweetSnapshot });
     };
@@ -1618,19 +1783,20 @@
       closePostModal();
     };
 
-    function renderMediaHtml(url, savedSnapshot = null) {
+    function renderMediaHtml(url, savedSnapshot = null, contextKey = 'media') {
       const safeUrl = (url || '').trim();
       const tweetId = extractTweetId(safeUrl);
       if (tweetId) {
-        if (savedSnapshot) {
-          tweetCache[tweetId] = savedSnapshot;
-          return buildNativeTweetCardHtml(savedSnapshot, false);
-        }
-        if (tweetCache[tweetId]) {
-          return buildNativeTweetCardHtml(tweetCache[tweetId], false);
+        const snap = (savedSnapshot && savedSnapshot.schemaVersion === 2)
+          ? savedSnapshot
+          : (tweetCache[tweetId] && tweetCache[tweetId].schemaVersion === 2 ? tweetCache[tweetId] : null);
+
+        if (snap) {
+          tweetCache[tweetId] = snap;
+          return buildNativeTweetCardHtml(snap, false, contextKey);
         }
         setTimeout(() => window.hydrateTweetCards && window.hydrateTweetCards(), 10);
-        return `<div data-tweet-id="${tweetId}" data-tweet-url="${safeUrl}" class="my-2 p-4 rounded-2xl border theme-border theme-card text-xs theme-sub animate-pulse">𝕏 ポスト＆引用データを取得・アーカイブ保存中...</div>`;
+        return `<div data-tweet-id="${tweetId}" data-tweet-url="${safeUrl}" data-ctx-key="${contextKey}" class="my-2 p-4 rounded-2xl border theme-border theme-card text-xs theme-sub animate-pulse">𝕏 ポスト全文＆動画データを取得・保存中...</div>`;
       }
       const ytMatch = safeUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]{11})/);
       if (ytMatch) {
@@ -1639,10 +1805,14 @@
         </div>`;
       }
       if (/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(safeUrl)) {
-        return `<video src="${safeUrl}" controls onclick="event.stopPropagation()" class="w-full max-h-96 rounded-xl my-2 bg-black"></video>`;
+        return `<div class="my-2 rounded-xl overflow-hidden border theme-border bg-black" onclick="event.stopPropagation()">
+          <video src="${safeUrl}" controls playsinline preload="metadata" referrerpolicy="no-referrer"
+            onerror="handleTweetVideoError(this, '${safeUrl}', '')"
+            class="w-full max-h-96 mx-auto bg-black"></video>
+        </div>`;
       }
       if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|avif)(\?.*)?$/i.test(safeUrl) || safeUrl.startsWith('data:image/')) {
-        return `<img src="${safeUrl}" onclick="event.stopPropagation(); openLightbox('${safeUrl}')" class="max-h-96 rounded-xl object-contain my-2 cursor-zoom-in">`;
+        return `<img src="${safeUrl}" referrerpolicy="no-referrer" onclick="event.stopPropagation(); openLightbox('${safeUrl}')" class="max-h-96 rounded-xl object-contain my-2 cursor-zoom-in">`;
       }
       let hostname = safeUrl;
       try { hostname = new URL(safeUrl).hostname; } catch (e) {}
@@ -1706,37 +1876,47 @@
 
       if (post.tweetSnapshots) {
         Object.entries(post.tweetSnapshots).forEach(([tid, snap]) => {
-          if (!tweetCache[tid]) tweetCache[tid] = snap;
+          if (!tweetCache[tid] && snap?.schemaVersion === 2) tweetCache[tid] = snap;
         });
       }
-      if (post.quotedExternalSnapshot && post.quotedExternalSnapshot.id) {
+      if (post.quotedExternalSnapshot && post.quotedExternalSnapshot.id && post.quotedExternalSnapshot.schemaVersion === 2) {
         tweetCache[post.quotedExternalSnapshot.id] = post.quotedExternalSnapshot;
       }
 
-      const totalText = (post.blocks || [])
-        .filter(b => b.type === 'text')
-        .map(b => b.content || '')
-        .join('\n');
-      const lineCount = totalText.split('\n').length;
-      const isLongPost = totalText.length > 220 || lineCount > 6 || (post.blocks || []).length > 2;
-      const isExpanded = expandedPostIds.has(post.id);
-      const shouldCollapse = isLongPost && !isExpanded;
+      const isPostExpanded = expandedPostIds.has(post.id);
 
-      const blocksHtml = (post.blocks || []).map(b => {
+      // ★ テキスト段落のみに長文折りたたみマスクを適用し、埋め込みツイートカードや動画はマスクの外に出す
+      let hasLongTextInPost = false;
+      const blocksHtml = (post.blocks || []).map((b, bIdx) => {
         if (b.type === 'text') {
           const rawContent = b.content || '';
+          const isThisBlockLong = rawContent.length > 200 || rawContent.split('\n').length > 6;
+          if (isThisBlockLong) hasLongTextInPost = true;
+          const collapseThisText = isThisBlockLong && !isPostExpanded;
+
           const inlineTweetMatches = [...rawContent.matchAll(/https?:\/\/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)[^\s<]*/gi)];
-          const inlineTweetCards = inlineTweetMatches.map(m => {
+          const inlineTweetCards = inlineTweetMatches.map((m, mIdx) => {
             const tid = m[1];
             const savedSnap = post.tweetSnapshots?.[tid] || tweetCache[tid] || null;
-            return renderMediaHtml(m[0], savedSnap);
+            return renderMediaHtml(m[0], savedSnap, `post_${post.id}_in_${bIdx}_${mIdx}`);
           }).join('');
 
           const escaped = rawContent
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
             .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="theme-accent-text hover:underline break-all">$1</a>')
             .replace(/(^|\s)(#[^\s#<]+)/g, '$1<span onclick="event.stopPropagation(); filterByTag(\'$2\')" class="theme-accent-text hover:underline cursor-pointer">$2</span>');
-          return `<p class="whitespace-pre-wrap post-text my-1">${escaped}</p>${inlineTweetCards}`;
+
+          return `
+            <div class="${collapseThisText ? 'post-collapsed' : ''}">
+              <p class="whitespace-pre-wrap post-text my-1">${escaped}</p>
+            </div>
+            ${collapseThisText ? `
+              <button onclick="toggleExpandPost('${post.id}', event)" class="mt-1 mb-1 text-xs font-bold theme-accent-text hover:underline block">
+                さらに表示
+              </button>
+            ` : ''}
+            ${inlineTweetCards}
+          `;
         }
         if (b.type === 'image') {
           return `<figure class="my-2">
@@ -1745,7 +1925,7 @@
           </figure>`;
         }
         if (b.type === 'embed') {
-          return `<div class="my-2">${renderMediaHtml(b.url, b.tweetSnapshot)}
+          return `<div class="my-2">${renderMediaHtml(b.url, b.tweetSnapshot, `post_${post.id}_emb_${bIdx}`)}
             ${b.caption ? `<div class="text-xs theme-sub mt-1">${b.caption}</div>` : ''}
           </div>`;
         }
@@ -1757,7 +1937,7 @@
         const qPost = postsData.find(p => p.id === post.quotedPostId);
         quotedCardHtml = buildInternalQuoteCardHtml(qPost, false);
       } else if (post.quotedExternalUrl) {
-        quotedCardHtml = renderMediaHtml(post.quotedExternalUrl, post.quotedExternalSnapshot);
+        quotedCardHtml = renderMediaHtml(post.quotedExternalUrl, post.quotedExternalSnapshot, `post_${post.id}_quote`);
       }
 
       const targetThreadId = post.parentId || post.id;
@@ -1769,7 +1949,6 @@
              onclick="${isSelectMode ? `togglePostSelection('${post.id}', event)` : ''}"
              class="flex gap-3 ${isChild ? 'pt-3' : ''} rounded-xl transition ${isSelectMode ? 'cursor-pointer' : ''} ${isSelected ? 'bg-sky-500/10 ring-1 ring-sky-500/40 p-2 -m-2' : ''}">
           
-          <!-- ★ 複数選択モード時のチェックボックス -->
           ${isSelectMode ? `
             <div class="pt-2 shrink-0">
               <div class="w-5 h-5 rounded-md border flex items-center justify-center transition ${isSelected ? 'theme-accent-bg border-transparent text-white' : 'border-gray-500 bg-black/40'}">
@@ -1801,13 +1980,13 @@
 
             ${post.title ? `<h3 class="font-bold text-base mb-1">${post.title}</h3>` : ''}
 
-            <div class="${shouldCollapse ? 'post-collapsed' : ''}">
+            <div>
               ${blocksHtml}
             </div>
 
-            ${isLongPost ? `
+            ${hasLongTextInPost && isPostExpanded ? `
               <button onclick="toggleExpandPost('${post.id}', event)" class="mt-1 text-xs font-bold theme-accent-text hover:underline block">
-                ${shouldCollapse ? 'さらに表示' : '折りたたむ'}
+                折りたたむ
               </button>
             ` : ''}
 
@@ -1815,7 +1994,6 @@
 
             <!-- アクションバー -->
             <div class="flex items-center justify-between max-w-md mt-2 -ml-2 text-xs theme-sub select-none">
-              <!-- スレッド返信 -->
               <button onclick="event.stopPropagation(); openPostModal('${targetThreadId}')" class="group flex items-center gap-1 hover:text-sky-400 transition" title="スレッドに返信">
                 <div class="p-2 rounded-full group-hover:bg-sky-500/10 transition">
                   <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -1825,7 +2003,6 @@
                 ${!isChild && replyCount > 0 ? `<span class="text-xs">${replyCount}</span>` : ''}
               </button>
 
-              <!-- 引用リツイート -->
               <button onclick="event.stopPropagation(); openQuoteModal('${post.id}')" class="group flex items-center gap-1 ${quoteCount > 0 ? 'text-emerald-400' : 'hover:text-emerald-400'} transition" title="このポストを引用リツイート">
                 <div class="p-2 rounded-full group-hover:bg-emerald-500/10 transition">
                   <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -1835,7 +2012,6 @@
                 ${quoteCount > 0 ? `<span class="text-xs">${quoteCount}</span>` : ''}
               </button>
 
-              <!-- ブックマーク -->
               <button onclick="event.stopPropagation(); toggleBookmark('${post.id}', ${!!post.bookmarked})" class="group flex items-center gap-1 ${post.bookmarked ? 'text-sky-400' : 'hover:text-sky-400'} transition" title="ブックマーク">
                 <div class="p-2 rounded-full group-hover:bg-sky-500/10 transition">
                   <svg class="w-[18px] h-[18px]" fill="${post.bookmarked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -1844,7 +2020,6 @@
                 </div>
               </button>
 
-              <!-- 単体コピーアイコン -->
               <button onclick="copyPostText('${post.id}', event)" class="group flex items-center gap-1 hover:text-sky-400 transition" title="このポストをコピー">
                 <div class="p-2 rounded-full group-hover:bg-sky-500/10 transition">
                   <svg class="w-[17px] h-[17px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -1853,7 +2028,6 @@
                 </div>
               </button>
 
-              <!-- ピン留め -->
               ${!isChild ? `
                 <button onclick="event.stopPropagation(); togglePin('${post.id}', ${!!post.pinned})" class="group flex items-center gap-1 ${post.pinned ? 'text-sky-400' : 'hover:text-sky-400'} transition" title="プロフィールに固定">
                   <div class="p-2 rounded-full group-hover:bg-sky-500/10 transition">
@@ -1864,7 +2038,6 @@
                 </button>
               ` : ''}
 
-              <!-- 編集 -->
               <button onclick="event.stopPropagation(); startEdit('${post.id}')" class="group flex items-center gap-1 hover:text-sky-400 transition" title="編集">
                 <div class="p-2 rounded-full group-hover:bg-sky-500/10 transition">
                   <svg class="w-[17px] h-[17px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -1873,7 +2046,6 @@
                 </div>
               </button>
 
-              <!-- 削除 -->
               <button onclick="event.stopPropagation(); deletePost('${post.id}')" class="group flex items-center gap-1 hover:text-red-400 transition" title="削除">
                 <div class="p-2 rounded-full group-hover:bg-red-500/10 transition">
                   <svg class="w-[17px] h-[17px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
