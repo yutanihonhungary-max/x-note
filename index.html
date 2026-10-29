@@ -178,7 +178,7 @@
         </button>
       </div>
 
-      <!-- X風プロフィールヘッダー（ホーム表示時のみ表示） -->
+      <!-- X風プロフィールヘッダー -->
       <section id="profile-section" class="border-b theme-border">
         <div class="h-36 sm:h-44 w-full bg-gradient-to-r from-slate-900 via-sky-950 to-slate-900 relative overflow-hidden">
           <img id="profile-banner" src="" class="w-full h-full object-cover hidden">
@@ -218,10 +218,10 @@
 
       <div class="theme-card rounded-2xl p-4 border theme-border text-xs theme-sub space-y-2">
         <div class="font-bold text-white flex items-center gap-1.5">
-          <i data-lucide="zap" class="w-4 h-4 theme-accent-text"></i> 便利機能
+          <i data-lucide="zap" class="w-4 h-4 theme-accent-text"></i> 本家𝕏連携＆便利機能
         </div>
-        <p>・<b>URLリンクカード：</b>本文にURLを貼るか「動画/URL」から追加すると、タップでそのサイトを開けます。</p>
-        <p>・<b>スクショ直貼り：</b>投稿ウィンドウで <code class="px-1 py-0.5 bg-white/10 rounded">Ctrl + V</code> を押すと、クリップボードの画像を直接差し込めます。</p>
+        <p>・<b>本家ツイート＆引用ツイ表示：</b>本家XのURLを本文に貼るか「𝕏 ツイート取込」を押すと、引用元も含めてこのアプリの表示形式でそのまま展開・保存できます。</p>
+        <p>・<b>スクショ直貼り：</b>投稿画面で <code class="px-1 py-0.5 bg-white/10 rounded">Ctrl + V</code> を押すとクリップボードの画像を直接差し込めます。</p>
       </div>
     </aside>
   </div>
@@ -267,15 +267,19 @@
       </div>
 
       <div class="px-4 py-3 border-t theme-border flex flex-wrap items-center justify-between gap-2 bg-black/30">
-        <div class="flex items-center gap-1">
+        <div class="flex items-center gap-1 flex-wrap">
           <label class="cursor-pointer p-2 rounded-full hover:bg-white/10 theme-accent-text transition flex items-center gap-1 text-xs font-bold" title="カーソル位置に写真を挿入">
             <i data-lucide="image-plus" class="w-4 h-4"></i>
             <span>写真</span>
             <input id="photo-input" type="file" accept="image/*" multiple class="hidden">
           </label>
-          <button onclick="insertUrlBlock()" class="p-2 rounded-full hover:bg-white/10 theme-accent-text transition flex items-center gap-1 text-xs font-bold">
+          <button onclick="insertUrlBlock()" class="p-2 rounded-full hover:bg-white/10 theme-accent-text transition flex items-center gap-1 text-xs font-bold" title="Webサイト・YouTube・XのURLカードを挿入">
             <i data-lucide="link" class="w-4 h-4"></i>
             <span>動画/URL</span>
+          </button>
+          <button onclick="importTweetAsPost()" class="p-2 rounded-full hover:bg-white/10 theme-accent-text transition flex items-center gap-1 text-xs font-bold" title="本家XのツイートURLから本文・画像・引用元を自分の投稿として取り込む">
+            <span class="font-black text-sm leading-none">𝕏</span>
+            <span>ツイート取込</span>
           </button>
           <button onclick="addTextBlock()" class="p-2 rounded-full hover:bg-white/10 theme-accent-text transition flex items-center gap-1 text-xs font-bold">
             <i data-lucide="plus" class="w-4 h-4"></i>
@@ -283,7 +287,7 @@
           </button>
         </div>
         <div class="text-[11px] theme-sub">
-          <span id="char-count">0 文字</span> · <span class="hidden sm:inline">スクショ Ctrl+V 対応</span>
+          <span id="char-count">0 文字</span> · <span class="hidden sm:inline">Ctrl+V 対応</span>
         </div>
       </div>
     </div>
@@ -421,7 +425,7 @@
     // =========================================================================
     // ★ここに自分の firebaseConfig を貼り付けてください
     // =========================================================================
-   const firebaseConfig = {
+    const firebaseConfig = {
   apiKey: "AIzaSyDHY8YRAmdJlGdB24inmnX5wmL4Ikt66bA",
   authDomain: "my-x-note.firebaseapp.com",
   databaseURL: "https://my-x-note-default-rtdb.firebaseio.com",
@@ -447,6 +451,7 @@
     let replyParentId = null;
 
     const expandedPostIds = new Set();
+    const tweetCache = {};
 
     let profileData = {
       name: 'Personal Note',
@@ -781,6 +786,148 @@
       closeProfileModal();
     };
 
+    // =========================================================================
+    // ★ 本家X（Twitter）のツイート＆引用元データを取得してアプリのUI形式で描画する処理
+    // =========================================================================
+    function extractTweetId(url) {
+      const m = (url || '').match(/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)/i);
+      return m ? m[1] : null;
+    }
+
+    async function fetchTweetData(tweetId) {
+      if (tweetCache[tweetId]) return tweetCache[tweetId];
+      try {
+        const res = await fetch(`https://api.fxtwitter.com/status/${tweetId}`);
+        if (!res.ok) throw new Error('Fetch failed');
+        const data = await res.json();
+        if (data && data.tweet) {
+          tweetCache[tweetId] = data.tweet;
+          return data.tweet;
+        }
+      } catch (e) {
+        console.error('Tweet fetch error:', e);
+      }
+      return null;
+    }
+
+    function renderTweetMediaGrid(media) {
+      if (!media) return '';
+      let html = '';
+      if (media.photos && media.photos.length > 0) {
+        const cols = media.photos.length > 1 ? 'grid-cols-2' : 'grid-cols-1';
+        html += `<div class="grid ${cols} gap-1.5 my-2 rounded-xl overflow-hidden border theme-border">
+          ${media.photos.map(p => `<img src="${p.url}" onclick="event.stopPropagation(); openLightbox('${p.url}')" class="w-full max-h-72 object-cover cursor-zoom-in">`).join('')}
+        </div>`;
+      }
+      if (media.videos && media.videos.length > 0) {
+        html += media.videos.map(v => `
+          <video src="${v.url}" poster="${v.thumbnail_url || ''}" controls onclick="event.stopPropagation()" class="w-full max-h-80 rounded-xl my-2 bg-black border theme-border"></video>
+        `).join('');
+      }
+      return html;
+    }
+
+    // 取得したツイート（および引用元ツイート）をこのアプリの表示形式でHTML化
+    function buildNativeTweetCardHtml(t, isQuoted = false) {
+      if (!t) return '';
+      const dateStr = t.created_timestamp
+        ? new Date(t.created_timestamp * 1000).toLocaleString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+        : '';
+      const escapedText = (t.text || '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="theme-accent-text hover:underline break-all">$1</a>');
+
+      // 引用リポスト（quote）が含まれている場合は再帰的にこのアプリの形式で内包表示
+      const quoteHtml = (t.quote && !isQuoted) ? buildNativeTweetCardHtml(t.quote, true) : '';
+
+      return `
+        <div class="${isQuoted ? 'mt-2.5 p-3 rounded-xl bg-white/[0.03]' : 'my-2 p-3.5 rounded-2xl theme-card'} border theme-border transition">
+          <div class="flex items-center justify-between gap-2 mb-1.5">
+            <div class="flex items-center gap-2 min-w-0">
+              <img src="${t.author?.avatar_url || DEFAULT_AVATAR}" class="${isQuoted ? 'w-5 h-5' : 'w-8 h-8'} rounded-full object-cover border theme-border shrink-0">
+              <div class="flex items-center gap-1.5 flex-wrap min-w-0 text-xs">
+                <span class="font-bold truncate" style="color: var(--text-main)">${t.author?.name || 'X User'}</span>
+                <span class="theme-sub truncate">@${t.author?.screen_name || ''}</span>
+                ${dateStr ? `<span class="theme-sub">· ${dateStr}</span>` : ''}
+              </div>
+            </div>
+            <a href="${t.url || `https://x.com/i/status/${t.id}`}" target="_blank" rel="noopener noreferrer" class="text-[11px] theme-sub hover:text-white px-2 py-0.5 rounded-full border theme-border shrink-0" title="本家Xで開く">𝕏 ↗</a>
+          </div>
+          <div class="whitespace-pre-wrap post-text leading-relaxed">${escapedText}</div>
+          ${renderTweetMediaGrid(t.media)}
+          ${quoteHtml}
+        </div>
+      `;
+    }
+
+    window.hydrateTweetCards = async function() {
+      const nodes = document.querySelectorAll('[data-tweet-id]:not([data-loaded="true"])');
+      for (const node of nodes) {
+        node.setAttribute('data-loaded', 'true');
+        const tid = node.getAttribute('data-tweet-id');
+        const fallbackUrl = node.getAttribute('data-tweet-url');
+        const tweet = await fetchTweetData(tid);
+        if (tweet) {
+          node.innerHTML = buildNativeTweetCardHtml(tweet, false);
+        } else {
+          node.innerHTML = `<a href="${fallbackUrl}" target="_blank" rel="noopener noreferrer" class="block my-2 p-3 rounded-xl border theme-border text-xs theme-accent-text hover:underline">𝕏 ポストを開く: ${fallbackUrl}</a>`;
+        }
+      }
+    };
+
+    // 本家ツイートをそのまま「自分の投稿」として取り込む機能（引用元も自動でカード化）
+    window.importTweetAsPost = async function() {
+      const url = prompt("取り込みたい本家X（Twitter）のポストURLを入力してください:");
+      if (!url || !url.trim()) return;
+      const tid = extractTweetId(url.trim());
+      if (!tid) {
+        alert("有効なX（Twitter）のステータスURLではありません。");
+        return;
+      }
+      const tweet = await fetchTweetData(tid);
+      if (!tweet) {
+        alert("ツイート情報の取得に失敗しました（非公開アカウントまたは削除済みの可能性があります）。");
+        return;
+      }
+
+      const headerLine = `🐦 @${tweet.author?.screen_name || 'user'} (${tweet.author?.name || ''})\n`;
+      const bodyText = headerLine + (tweet.text || '');
+
+      if (editorBlocks.length === 1 && editorBlocks[0].type === 'text' && !editorBlocks[0].content.trim()) {
+        editorBlocks = [{ id: crypto.randomUUID(), type: 'text', content: bodyText }];
+      } else {
+        editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: bodyText });
+      }
+
+      if (tweet.media?.photos) {
+        tweet.media.photos.forEach(p => {
+          editorBlocks.push({ id: crypto.randomUUID(), type: 'image', url: p.url, caption: '' });
+        });
+      }
+      if (tweet.media?.videos) {
+        tweet.media.videos.forEach(v => {
+          editorBlocks.push({ id: crypto.randomUUID(), type: 'embed', url: v.url, caption: '' });
+        });
+      }
+
+      // 引用ツイがある場合は、引用元もこのアプリの表示カードとしてブロック追加
+      if (tweet.quote) {
+        const quoteUrl = tweet.quote.url || `https://x.com/${tweet.quote.author?.screen_name || 'i'}/status/${tweet.quote.id}`;
+        tweetCache[tweet.quote.id] = tweet.quote;
+        editorBlocks.push({
+          id: crypto.randomUUID(),
+          type: 'embed',
+          url: quoteUrl,
+          caption: ''
+        });
+      }
+
+      editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: '' });
+      activeBlockIndex = editorBlocks.length - 1;
+      renderEditor();
+      hydrateTweetCards();
+    };
+
     window.renderEditor = function() {
       const container = document.getElementById('editor-blocks');
       container.innerHTML = '';
@@ -791,7 +938,7 @@
 
         const controls = `
           <div class="flex items-center justify-between text-[11px] theme-sub mb-1">
-            <span>${block.type === 'text' ? 'テキスト段落' : block.type === 'image' ? '写真' : '動画 / Webリンク'}</span>
+            <span>${block.type === 'text' ? 'テキスト段落' : block.type === 'image' ? '写真' : '動画 / Webリンク / 𝕏引用'}</span>
             <div class="flex items-center gap-1">
               <button onclick="moveBlock(${idx}, -1)" class="px-1.5 py-0.5 hover:bg-white/10 rounded">↑</button>
               <button onclick="moveBlock(${idx}, 1)" class="px-1.5 py-0.5 hover:bg-white/10 rounded">↓</button>
@@ -804,7 +951,7 @@
           wrapper.innerHTML = controls;
           const ta = document.createElement('textarea');
           ta.className = "w-full bg-transparent outline-none text-sm leading-relaxed resize-none min-h-[85px]";
-          ta.placeholder = "いまどうしてる？（URLを貼ると自動でリンクになります / スクショ Ctrl+V 対応）";
+          ta.placeholder = "いまどうしてる？（本家XのURLを貼ると引用元も含めて自動展開されます / スクショ Ctrl+V 対応）";
           ta.value = block.content;
           ta.addEventListener('input', (e) => {
             editorBlocks[idx].content = e.target.value;
@@ -840,6 +987,7 @@
 
       updateCharCount();
       lucide.createIcons();
+      hydrateTweetCards();
     };
 
     function updateCharCount() {
@@ -917,7 +1065,7 @@
     });
 
     window.insertUrlBlock = function() {
-      const url = prompt("挿入したいURL（Webサイト・YouTube・動画mp4・画像URL）を入力してください:");
+      const url = prompt("挿入したいURL（本家XのツイートURL・Webサイト・YouTube・動画mp4・画像URL）を入力してください:");
       if (!url || !url.trim()) return;
       let formatted = url.trim();
       if (!/^https?:\/\//i.test(formatted) && !formatted.startsWith('data:')) {
@@ -978,9 +1126,18 @@
       closePostModal();
     };
 
-    // ★ URLの種類（YouTube / 動画 / 画像 / 一般Webサイト）を自動判別して表示
+    // URLの種類（本家X / YouTube / 動画 / 画像 / 一般Webサイト）を自動判別して表示
     function renderMediaHtml(url) {
       const safeUrl = (url || '').trim();
+      // 0. 本家X（Twitter）のステータスURL → ネイティブ形式でツイート＆引用元を表示
+      const tweetId = extractTweetId(safeUrl);
+      if (tweetId) {
+        if (tweetCache[tweetId]) {
+          return buildNativeTweetCardHtml(tweetCache[tweetId], false);
+        }
+        setTimeout(() => window.hydrateTweetCards && window.hydrateTweetCards(), 10);
+        return `<div data-tweet-id="${tweetId}" data-tweet-url="${safeUrl}" class="my-2 p-4 rounded-2xl border theme-border theme-card text-xs theme-sub animate-pulse">𝕏 ポスト＆引用データを読み込み中...</div>`;
+      }
       // 1. YouTube
       const ytMatch = safeUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]{11})/);
       if (ytMatch) {
@@ -996,7 +1153,7 @@
       if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|avif)(\?.*)?$/i.test(safeUrl) || safeUrl.startsWith('data:image/')) {
         return `<img src="${safeUrl}" onclick="openLightbox('${safeUrl}')" class="max-h-96 rounded-xl object-contain my-2 cursor-zoom-in">`;
       }
-      // 4. 一般のWebサイトURL → X風リンクカードとして表示（クリックで新規タブで開く）
+      // 4. 一般のWebサイトURL → リンクカード
       let hostname = safeUrl;
       try { hostname = new URL(safeUrl).hostname; } catch (e) {}
       const favicon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=64`;
@@ -1041,11 +1198,16 @@
 
       const blocksHtml = (post.blocks || []).map(b => {
         if (b.type === 'text') {
-          const escaped = (b.content || '')
+          const rawContent = b.content || '';
+          // 本文中に直接貼られた本家XのツイートURLも自動検出して下にカード展開する
+          const inlineTweetMatches = [...rawContent.matchAll(/https?:\/\/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)[^\s<]*/gi)];
+          const inlineTweetCards = inlineTweetMatches.map(m => renderMediaHtml(m[0])).join('');
+
+          const escaped = rawContent
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
             .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="theme-accent-text hover:underline break-all">$1</a>')
             .replace(/(^|\s)(#[^\s#<]+)/g, '$1<span onclick="filterByTag(\'$2\')" class="theme-accent-text hover:underline cursor-pointer">$2</span>');
-          return `<p class="whitespace-pre-wrap post-text my-1">${escaped}</p>`;
+          return `<p class="whitespace-pre-wrap post-text my-1">${escaped}</p>${inlineTweetCards}`;
         }
         if (b.type === 'image') {
           return `<figure class="my-2">
@@ -1202,6 +1364,8 @@
         article.innerHTML = html;
         list.appendChild(article);
       });
+
+      hydrateTweetCards();
     }
 
     function renderTags() {
