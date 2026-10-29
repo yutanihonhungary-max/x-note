@@ -37,6 +37,7 @@
       background-color: var(--bg-main);
       color: var(--text-main);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overscroll-behavior-x: none;
     }
     .theme-card { background-color: var(--bg-card); }
     .theme-border { border-color: var(--border-color); }
@@ -66,6 +67,12 @@
     .highlight-jump {
       animation: highlightPulse 2s ease-out;
     }
+    .dragging-item {
+      opacity: 0.45;
+      border-color: var(--accent) !important;
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     textarea { field-sizing: content; }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -73,6 +80,11 @@
   </style>
 </head>
 <body class="min-h-screen selection:bg-sky-500 selection:text-white">
+
+  <!-- コピー完了などのミニトースト通知 -->
+  <div id="toast" class="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full theme-accent-bg text-white text-xs font-bold shadow-2xl transition-opacity duration-200 opacity-0 pointer-events-none">
+    ポストをコピーしました
+  </div>
 
   <!-- 未ログイン時のロック画面 -->
   <div id="login-screen" class="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-6">
@@ -108,7 +120,7 @@
         <button id="nav-btn-media" onclick="setFilter('media')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 transition">
           <i data-lucide="image" class="w-5 h-5"></i> <span>メディア</span>
         </button>
-        <button onclick="openCategoryModal()" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 theme-sub hover:text-white transition">
+        <button onclick="openCategoryModal()" class="lg:hidden w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 theme-sub hover:text-white transition">
           <i data-lucide="folder-kanban" class="w-5 h-5"></i> <span>カテゴリー管理</span>
         </button>
         <button onclick="openProfileModal()" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 theme-sub hover:text-white transition">
@@ -140,8 +152,8 @@
       </div>
     </aside>
 
-    <!-- 中央タイムライン -->
-    <main class="flex-1 min-w-0 border-r theme-border pb-24 md:pb-12">
+    <!-- 中央タイムライン（スマホでの左右スワイプ切り替え対応領域） -->
+    <main id="main-swipe-area" class="flex-1 min-w-0 border-r theme-border pb-24 md:pb-12">
       
       <!-- 上部固定ヘッダー＆カテゴリータブ -->
       <header class="sticky top-0 z-30 backdrop-blur-md bg-black/80 border-b theme-border">
@@ -194,7 +206,7 @@
           <div class="flex justify-between items-end -mt-12 sm:-mt-14 mb-3">
             <img id="profile-avatar" src="" class="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-black object-cover bg-zinc-900">
             <div class="flex gap-2">
-              <button onclick="openCategoryModal()" class="px-3.5 py-1.5 rounded-full border theme-border text-xs font-bold hover:bg-white/5 transition">
+              <button onclick="openCategoryModal()" class="lg:hidden px-3.5 py-1.5 rounded-full border theme-border text-xs font-bold hover:bg-white/5 transition">
                 タブ編集
               </button>
               <button onclick="openProfileModal()" class="px-4 py-1.5 rounded-full border theme-border text-xs font-bold hover:bg-white/5 transition">
@@ -209,26 +221,30 @@
       </section>
 
       <!-- 投稿一覧フィード -->
-      <div id="feed-list" class="divide-y theme-border"></div>
+      <div id="feed-list" class="divide-y theme-border min-h-[50vh]"></div>
     </main>
 
-    <!-- 右サイドバー -->
-    <aside class="hidden lg:block w-72 p-4 space-y-4 sticky top-0 h-screen overflow-y-auto shrink-0">
-      <div class="theme-card rounded-2xl p-4 border theme-border">
-        <h3 class="font-bold text-sm mb-3 flex items-center gap-1.5">
-          <i data-lucide="hash" class="w-4 h-4 theme-accent-text"></i> ハッシュタグ
-        </h3>
-        <div id="tag-list" class="flex flex-wrap gap-1.5 text-xs theme-sub">
-          #タグ を付けて投稿するとここに集計されます
+    <!-- ★ 右サイドバー（PC用：カテゴリー管理を直接表示） -->
+    <aside class="hidden lg:block w-80 p-4 sticky top-0 h-screen overflow-y-auto shrink-0">
+      <div class="theme-card rounded-2xl p-4 border theme-border space-y-3.5">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-sm flex items-center gap-2">
+            <i data-lucide="folder-kanban" class="w-4 h-4 theme-accent-text"></i>
+            <span>カテゴリー（タブ）管理</span>
+          </h3>
+          <span class="text-[11px] theme-sub">ドラッグで並替</span>
         </div>
-      </div>
 
-      <div class="theme-card rounded-2xl p-4 border theme-border text-xs theme-sub space-y-2">
-        <div class="font-bold text-white flex items-center gap-1.5">
-          <i data-lucide="repeat-2" class="w-4 h-4 text-emerald-400"></i> 引用リツイート＆便利機能
+        <div class="flex gap-1.5">
+          <input id="sidebar-new-category-input" type="text" placeholder="新しいタブ名を追加..."
+            onkeydown="if(event.key==='Enter') addCategory('sidebar-new-category-input')"
+            class="flex-1 bg-black/40 border theme-border rounded-xl px-3 py-2 text-xs outline-none focus:border-sky-500">
+          <button onclick="addCategory('sidebar-new-category-input')" class="px-3.5 py-2 rounded-xl theme-accent-bg text-white font-bold text-xs shrink-0 hover:opacity-90 transition">
+            追加
+          </button>
         </div>
-        <p>・<b>自分の投稿を引用RT：</b>各投稿の下にある「🔁（リポスト）」アイコンを押すと、その投稿を引用カードとしてぶら下げて新規投稿できます。</p>
-        <p>・<b>本家𝕏を引用RT：</b>投稿画面の「🔁 本家𝕏を引用」またはURL貼り付けで、本家のポストを引用カード形式で表示できます。</p>
+
+        <div id="sidebar-category-manage-list" class="space-y-1.5 text-xs"></div>
       </div>
     </aside>
   </div>
@@ -248,10 +264,10 @@
   </nav>
 
   <!-- ========================================================================= -->
-  <!-- 1. 投稿・スレッド返信・引用リツイート ポップアップモーダル -->
+  <!-- 1. 投稿・スレッド返信・引用リツイート ポップアップモーダル（外側タップで閉じる） -->
   <!-- ========================================================================= -->
-  <div id="post-modal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-start justify-center p-2 sm:p-6 overflow-y-auto">
-    <div class="w-full max-w-2xl theme-card border theme-border rounded-2xl shadow-2xl overflow-hidden my-auto">
+  <div id="post-modal" onclick="if(event.target === this) closePostModal()" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-start justify-center p-2 sm:p-6 overflow-y-auto">
+    <div onclick="event.stopPropagation()" class="w-full max-w-2xl theme-card border theme-border rounded-2xl shadow-2xl overflow-hidden my-auto">
       <div class="px-4 py-3 border-b theme-border flex items-center justify-between">
         <button onclick="closePostModal()" class="p-1.5 rounded-full hover:bg-white/10">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -275,10 +291,10 @@
         <!-- ブロック一覧 -->
         <div id="editor-blocks" class="space-y-3"></div>
 
-        <!-- ★ 引用リツイート対象プレビュー枠（自分の投稿を引用中、または本家Xを引用中に表示） -->
+        <!-- 引用リツイート対象プレビュー枠 -->
         <div id="quote-preview-container" class="hidden pt-2">
           <div class="flex items-center justify-between text-xs text-emerald-400 font-bold mb-1 px-1">
-            <span>🔁 引用リツイート元</span>
+            <span>🔁 引用リツイート元（自動アーカイブ保存対象）</span>
             <button onclick="clearQuoteTarget()" class="text-red-400 hover:underline text-[11px]">引用を解除 ×</button>
           </div>
           <div id="quote-preview-box" class="rounded-2xl border theme-border p-3 bg-white/[0.02]"></div>
@@ -296,7 +312,7 @@
             <i data-lucide="link" class="w-4 h-4"></i>
             <span>動画/URL</span>
           </button>
-          <button onclick="promptExternalQuoteTweet()" class="p-2 rounded-full hover:bg-white/10 text-emerald-400 transition flex items-center gap-1 text-xs font-bold" title="本家XのポストURLを引用リツイートする">
+          <button onclick="promptExternalQuoteTweet()" class="p-2 rounded-full hover:bg-white/10 text-emerald-400 transition flex items-center gap-1 text-xs font-bold" title="本家XのポストURLを引用リツイートする（元ツイが消えても残ります）">
             <i data-lucide="repeat-2" class="w-4 h-4"></i>
             <span>本家𝕏を引用</span>
           </button>
@@ -317,10 +333,10 @@
   </div>
 
   <!-- ========================================================================= -->
-  <!-- 2. プロフィール編集モーダル -->
+  <!-- 2. プロフィール編集モーダル（外側タップで閉じる） -->
   <!-- ========================================================================= -->
-  <div id="profile-modal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="w-full max-w-md theme-card border theme-border rounded-2xl p-5 space-y-4">
+  <div id="profile-modal" onclick="if(event.target === this) closeProfileModal()" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div onclick="event.stopPropagation()" class="w-full max-w-md theme-card border theme-border rounded-2xl p-5 space-y-4">
       <div class="flex items-center justify-between border-b theme-border pb-3">
         <h3 class="font-bold text-base">プロフィールを編集</h3>
         <button onclick="closeProfileModal()" class="p-1 hover:bg-white/10 rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button>
@@ -354,10 +370,10 @@
   </div>
 
   <!-- ========================================================================= -->
-  <!-- 3. 表示・フォントサイズ・行間・余白・配色モーダル -->
+  <!-- 3. 表示・フォントサイズ・行間・余白・配色モーダル（外側タップで閉じる） -->
   <!-- ========================================================================= -->
-  <div id="display-modal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="w-full max-w-md theme-card border theme-border rounded-2xl p-5 space-y-4">
+  <div id="display-modal" onclick="if(event.target === this) closeDisplayModal()" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div onclick="event.stopPropagation()" class="w-full max-w-md theme-card border theme-border rounded-2xl p-5 space-y-4">
       <div class="flex items-center justify-between border-b theme-border pb-3">
         <h3 class="font-bold text-base">表示・フォント・配色の設定</h3>
         <button onclick="closeDisplayModal()" class="p-1 hover:bg-white/10 rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button>
@@ -417,24 +433,28 @@
   </div>
 
   <!-- ========================================================================= -->
-  <!-- 4. カテゴリー（タブ）管理モーダル -->
+  <!-- 4. カテゴリー（タブ）管理モーダル（スマホ・タブレット用、外側タップで閉じる） -->
   <!-- ========================================================================= -->
-  <div id="category-modal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="w-full max-w-md theme-card border theme-border rounded-2xl p-5 space-y-4">
+  <div id="category-modal" onclick="if(event.target === this) closeCategoryModal()" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div onclick="event.stopPropagation()" class="w-full max-w-md theme-card border theme-border rounded-2xl p-5 space-y-4">
       <div class="flex items-center justify-between border-b theme-border pb-3">
-        <h3 class="font-bold text-base">カテゴリー（タブ）管理</h3>
+        <div>
+          <h3 class="font-bold text-base">カテゴリー（タブ）管理</h3>
+          <p class="text-[11px] theme-sub">左のハンドル（≡）をドラッグして順番を入れ替えられます</p>
+        </div>
         <button onclick="closeCategoryModal()" class="p-1 hover:bg-white/10 rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
       <div class="flex gap-2">
-        <input id="new-category-input" type="text" placeholder="新しいカテゴリー名（例：勉強・料理・日記）" class="flex-1 bg-black/40 border theme-border rounded-lg px-3 py-2 text-xs outline-none">
-        <button onclick="addCategory()" class="px-4 py-2 rounded-lg theme-accent-bg text-white font-bold text-xs shrink-0">追加</button>
+        <input id="modal-new-category-input" type="text" placeholder="新しいカテゴリー名（例：勉強・料理・日記）"
+          onkeydown="if(event.key==='Enter') addCategory('modal-new-category-input')"
+          class="flex-1 bg-black/40 border theme-border rounded-xl px-3 py-2 text-xs outline-none">
+        <button onclick="addCategory('modal-new-category-input')" class="px-4 py-2 rounded-xl theme-accent-bg text-white font-bold text-xs shrink-0">追加</button>
       </div>
-      <p class="text-[11px] theme-sub">※「名前変更」を押すと、そのタブに入っている過去の投稿のカテゴリー名もすべて自動で書き換わります。</p>
-      <div id="category-manage-list" class="space-y-2 max-h-72 overflow-y-auto text-xs"></div>
+      <div id="modal-category-manage-list" class="space-y-2 max-h-72 overflow-y-auto text-xs"></div>
     </div>
   </div>
 
-  <!-- 画像拡大モーダル -->
+  <!-- 画像拡大モーダル（外側タップで閉じる） -->
   <div id="lightbox" onclick="this.classList.add('hidden')" class="hidden fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 cursor-zoom-out">
     <img id="lightbox-img" src="" class="max-w-full max-h-full rounded-lg object-contain">
   </div>
@@ -473,11 +493,11 @@
     let editingPostId = null;
     let replyParentId = null;
 
-    // 引用リツイート用ステート（アプリ内投稿ID または 本家XのURL）
     let quotedPostId = null;
     let quotedExternalUrl = null;
 
     const expandedPostIds = new Set();
+    // ★ メモリ＋Firebase永続保存された本家Xのツイートデータキャッシュ（元ツイが消えても残る）
     const tweetCache = {};
 
     let profileData = {
@@ -500,6 +520,13 @@
     let activeBlockIndex = 0;
     let activeCursorPos = 0;
 
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.remove('opacity-0');
+      setTimeout(() => t.classList.add('opacity-0'), 1800);
+    }
+
     document.getElementById('login-btn').addEventListener('click', async () => {
       try { await signInWithPopup(auth, provider); }
       catch (err) {
@@ -521,12 +548,20 @@
       document.getElementById('app-screen').classList.remove('hidden');
       document.getElementById('user-email').textContent = user.email;
 
+      // ★ Firebaseに永続保存された本家Xツイートスナップショットを購読（元ツイート削除対策）
+      onValue(ref(db, `users/${user.uid}/tweetSnapshots`), (snap) => {
+        const val = snap.val() || {};
+        Object.entries(val).forEach(([tid, tData]) => {
+          tweetCache[tid] = tData;
+        });
+        renderFeed();
+      });
+
       onValue(ref(db, `users/${user.uid}/posts`), (snap) => {
         const val = snap.val() || {};
         postsData = Object.entries(val).map(([id, item]) => ({ id, ...item }));
         updateNavigationUI();
         renderFeed();
-        renderTags();
       });
 
       onValue(ref(db, `users/${user.uid}/profile`), (snap) => {
@@ -595,15 +630,88 @@
       if (currentUser) set(ref(db, `users/${currentUser.uid}/settings`), themeSettings);
     };
 
+    // =========================================================================
+    // ★ カテゴリー管理（アイコン化 ＆ 本家X風のドラッグ並び替え）
+    // =========================================================================
+    let dragSrcCatIdx = null;
+
+    function buildCategoryManageItemsHtml() {
+      const userCats = categories.filter(c => c !== 'すべて');
+      if (userCats.length === 0) {
+        return `<div class="p-4 text-center theme-sub text-xs">カテゴリーがありません</div>`;
+      }
+      return userCats.map((cat, idx) => `
+        <div draggable="true"
+             ondragstart="handleCatDragStart(event, ${idx})"
+             ondragover="handleCatDragOver(event)"
+             ondrop="handleCatDrop(event, ${idx})"
+             ondragend="handleCatDragEnd(event)"
+             data-cat-idx="${idx}"
+             class="cat-drag-row flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-black/40 border theme-border hover:border-gray-600 transition select-none">
+          <div class="flex items-center gap-2.5 min-w-0 flex-1">
+            <span class="cursor-grab active:cursor-grabbing theme-sub hover:text-white p-1 -ml-1" title="ドラッグして順番を変更">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5"/>
+              </svg>
+            </span>
+            <span onclick="selectCategory('${cat}')" class="font-bold text-sm truncate cursor-pointer hover:underline flex-1">${cat}</span>
+          </div>
+          <div class="flex items-center gap-1 shrink-0">
+            <!-- 名前変更（ペンアイコン） -->
+            <button onclick="renameCategory('${cat}')" class="p-1.5 rounded-full hover:bg-sky-500/15 theme-sub hover:text-sky-400 transition" title="名前変更">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"/>
+              </svg>
+            </button>
+            <!-- 削除（ゴミ箱アイコン） -->
+            <button onclick="deleteCategory('${cat}')" class="p-1.5 rounded-full hover:bg-red-500/15 theme-sub hover:text-red-400 transition" title="削除">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    window.handleCatDragStart = function(e, idx) {
+      dragSrcCatIdx = idx;
+      e.currentTarget.classList.add('dragging-item');
+      e.dataTransfer.effectAllowed = 'move';
+    };
+
+    window.handleCatDragOver = function(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    };
+
+    window.handleCatDrop = function(e, targetIdx) {
+      e.preventDefault();
+      if (dragSrcCatIdx === null || dragSrcCatIdx === targetIdx) return;
+      const userCats = categories.filter(c => c !== 'すべて');
+      const [moved] = userCats.splice(dragSrcCatIdx, 1);
+      userCats.splice(targetIdx, 0, moved);
+      categories = ['すべて', ...userCats];
+      dragSrcCatIdx = null;
+      if (currentUser) set(ref(db, `users/${currentUser.uid}/categories`), categories);
+      renderCategories();
+    };
+
+    window.handleCatDragEnd = function(e) {
+      e.currentTarget.classList.remove('dragging-item');
+      dragSrcCatIdx = null;
+    };
+
     function renderCategories() {
       const tabBar = document.getElementById('category-tabs');
       const selectEl = document.getElementById('post-category');
-      const manageList = document.getElementById('category-manage-list');
+      const modalManageList = document.getElementById('modal-category-manage-list');
+      const sidebarManageList = document.getElementById('sidebar-category-manage-list');
 
       if (!categories.includes('すべて')) categories.unshift('すべて');
 
       tabBar.innerHTML = categories.map(cat => `
-        <button onclick="selectCategory('${cat}')" class="px-4 py-3 whitespace-nowrap border-b-2 transition ${currentCategory === cat ? 'theme-accent-border theme-accent-text font-extrabold' : 'border-transparent theme-sub hover:text-white'}">
+        <button id="tab-btn-${cat}" onclick="selectCategory('${cat}')" class="px-4 py-3 whitespace-nowrap border-b-2 transition ${currentCategory === cat ? 'theme-accent-border theme-accent-text font-extrabold' : 'border-transparent theme-sub hover:text-white'}">
           ${cat}
         </button>
       `).join('');
@@ -613,27 +721,22 @@
         `<option value="${cat}">${cat}</option>`
       ).join('');
 
-      manageList.innerHTML = userCats.map((cat, idx) => `
-        <div class="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-black/40 border theme-border">
-          <span class="font-bold text-sm truncate flex-1">${cat}</span>
-          <div class="flex items-center gap-1.5 shrink-0">
-            <button onclick="moveCategory(${idx}, -1)" class="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-gray-300" title="上へ">↑</button>
-            <button onclick="moveCategory(${idx}, 1)" class="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-gray-300" title="下へ">↓</button>
-            <button onclick="renameCategory('${cat}')" class="px-2.5 py-1 rounded bg-sky-500/15 text-sky-400 hover:bg-sky-500/25 font-bold">名前変更</button>
-            <button onclick="deleteCategory('${cat}')" class="px-2.5 py-1 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 font-bold">削除</button>
-          </div>
-        </div>
-      `).join('');
+      const listHtml = buildCategoryManageItemsHtml();
+      if (modalManageList) modalManageList.innerHTML = listHtml;
+      if (sidebarManageList) sidebarManageList.innerHTML = listHtml;
     }
 
     window.selectCategory = function(cat) {
       currentCategory = cat;
       renderCategories();
       renderFeed();
+      const activeTabEl = document.getElementById(`tab-btn-${cat}`);
+      if (activeTabEl) activeTabEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
     };
 
-    window.addCategory = function() {
-      const input = document.getElementById('new-category-input');
+    window.addCategory = function(inputId = 'modal-new-category-input') {
+      const input = document.getElementById(inputId);
+      if (!input) return;
       const name = input.value.trim();
       if (!name || categories.includes(name)) return;
       categories.push(name);
@@ -670,16 +773,6 @@
       renderFeed();
     };
 
-    window.moveCategory = function(userCatIdx, dir) {
-      const userCats = categories.filter(c => c !== 'すべて');
-      const target = userCatIdx + dir;
-      if (target < 0 || target >= userCats.length) return;
-      [userCats[userCatIdx], userCats[target]] = [userCats[target], userCats[userCatIdx]];
-      categories = ['すべて', ...userCats];
-      if (currentUser) set(ref(db, `users/${currentUser.uid}/categories`), categories);
-      renderCategories();
-    };
-
     window.deleteCategory = function(name) {
       if (!confirm(`タブ「${name}」を削除しますか？（投稿自体は削除されません）`)) return;
       categories = categories.filter(c => c !== name);
@@ -688,6 +781,37 @@
       renderCategories();
       renderFeed();
     };
+
+    // =========================================================================
+    // ★ スマホでの左右スワイプによるカテゴリー（タブ）切り替え
+    // =========================================================================
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    const swipeArea = document.getElementById('main-swipe-area');
+    swipeArea.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) return;
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    swipeArea.addEventListener('touchend', (e) => {
+      if (!e.changedTouches || e.changedTouches.length !== 1) return;
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      // 横方向の移動が70px以上、かつ縦スクロールより十分大きい場合のみタブ切り替え発動
+      if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.8) {
+        const curIdx = categories.indexOf(currentCategory);
+        if (curIdx === -1) return;
+        if (dx < 0 && curIdx < categories.length - 1) {
+          // 左へスワイプ → 次のタブ
+          selectCategory(categories[curIdx + 1]);
+        } else if (dx > 0 && curIdx > 0) {
+          // 右へスワイプ → 前のタブ
+          selectCategory(categories[curIdx - 1]);
+        }
+      }
+    }, { passive: true });
 
     function updateNavigationUI() {
       const filters = ['all', 'bookmark', 'media'];
@@ -757,7 +881,7 @@
     };
 
     // =========================================================================
-    // ★ モーダル開閉＆引用リツイート設定
+    // モーダル開閉＆引用リツイート設定
     // =========================================================================
     window.openPostModal = function(parentId = null, quoteId = null) {
       editingPostId = null;
@@ -793,17 +917,17 @@
       renderQuotePreviewInModal();
     };
 
-    // アプリ内の自分の投稿を引用リツイートする
     window.openQuoteModal = function(postId) {
       openPostModal(null, postId);
     };
 
-    // 本家XのURLを指定して引用リツイートする
-    window.promptExternalQuoteTweet = function() {
+    window.promptExternalQuoteTweet = async function() {
       const url = prompt("引用リツイートしたい本家X（Twitter）のポストURLを入力してください:");
       if (!url || !url.trim()) return;
       quotedPostId = null;
       quotedExternalUrl = url.trim();
+      const tid = extractTweetId(quotedExternalUrl);
+      if (tid) await fetchTweetData(tid);
       document.getElementById('modal-mode-label').textContent = '本家𝕏を引用リツイート';
       renderQuotePreviewInModal();
     };
@@ -867,22 +991,55 @@
     };
 
     // =========================================================================
-    // ★ 本家X（Twitter）のツイート＆引用元データを取得してアプリのUI形式で描画する処理
+    // ★ 本家X（Twitter）のツイート内容をFirebaseへ永続保存（元ツイが消えても残る仕組み）
     // =========================================================================
     function extractTweetId(url) {
       const m = (url || '').match(/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)/i);
       return m ? m[1] : null;
     }
 
+    // 必要なフィールドだけを抽出してスリムな永続スナップショットにする
+    function sanitizeTweetSnapshot(t) {
+      if (!t) return null;
+      return {
+        id: String(t.id || ''),
+        url: t.url || `https://x.com/${t.author?.screen_name || 'i'}/status/${t.id}`,
+        text: t.text || '',
+        created_timestamp: t.created_timestamp || null,
+        author: {
+          name: t.author?.name || 'X User',
+          screen_name: t.author?.screen_name || 'user',
+          avatar_url: t.author?.avatar_url || DEFAULT_AVATAR
+        },
+        media: {
+          photos: (t.media?.photos || []).map(p => ({ url: p.url })),
+          videos: (t.media?.videos || []).map(v => ({ url: v.url, thumbnail_url: v.thumbnail_url || '' }))
+        },
+        quote: t.quote ? sanitizeTweetSnapshot(t.quote) : null,
+        savedAt: Date.now()
+      };
+    }
+
     async function fetchTweetData(tweetId) {
+      // 1. すでにFirebaseまたはメモリに保存されたスナップショットがあればそれを返す（元ツイが削除されていても表示可能）
       if (tweetCache[tweetId]) return tweetCache[tweetId];
+
+      // 2. 初回取得時はAPIから取得し、即座にFirebaseの `tweetSnapshots` に永続保存する
       try {
         const res = await fetch(`https://api.fxtwitter.com/status/${tweetId}`);
         if (!res.ok) throw new Error('Fetch failed');
         const data = await res.json();
         if (data && data.tweet) {
-          tweetCache[tweetId] = data.tweet;
-          return data.tweet;
+          const snapshot = sanitizeTweetSnapshot(data.tweet);
+          tweetCache[tweetId] = snapshot;
+          if (currentUser) {
+            set(ref(db, `users/${currentUser.uid}/tweetSnapshots/${tweetId}`), snapshot);
+            if (snapshot.quote && snapshot.quote.id) {
+              tweetCache[snapshot.quote.id] = snapshot.quote;
+              set(ref(db, `users/${currentUser.uid}/tweetSnapshots/${snapshot.quote.id}`), snapshot.quote);
+            }
+          }
+          return snapshot;
         }
       } catch (e) {
         console.error('Tweet fetch error:', e);
@@ -929,7 +1086,10 @@
                 ${dateStr ? `<span class="theme-sub">· ${dateStr}</span>` : ''}
               </div>
             </div>
-            <a href="${t.url || `https://x.com/i/status/${t.id}`}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="text-[11px] theme-sub hover:text-white px-2 py-0.5 rounded-full border theme-border shrink-0" title="本家Xで開く">𝕏 ↗</a>
+            <div class="flex items-center gap-1 shrink-0">
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" title="アプリ内にアーカイブ保存済み">保存済</span>
+              <a href="${t.url || `https://x.com/i/status/${t.id}`}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="text-[11px] theme-sub hover:text-white px-2 py-0.5 rounded-full border theme-border" title="本家Xで開く">𝕏 ↗</a>
+            </div>
           </div>
           <div class="whitespace-pre-wrap post-text leading-relaxed">${escapedText}</div>
           ${renderTweetMediaGrid(t.media)}
@@ -938,7 +1098,6 @@
       `;
     }
 
-    // ★ アプリ内の自分の過去投稿を「引用リツイートカード」として描画する関数
     function buildInternalQuoteCardHtml(qPost, isModalPreview = false) {
       if (!qPost) {
         return `<div class="my-2 p-3 rounded-2xl border theme-border bg-white/[0.02] text-xs theme-sub">（引用元のポストは削除されました）</div>`;
@@ -975,13 +1134,11 @@
       `;
     }
 
-    // 引用カードをクリックした時に引用元の投稿へスクロール移動してハイライトする
     window.jumpToPost = function(postId) {
       const target = postsData.find(p => p.id === postId);
       if (!target) return;
       const rootId = target.parentId || target.id;
 
-      // もし別カテゴリーや別フィルターで隠れている場合は「すべて・ホーム」に切り替えて表示
       if (currentFilter !== 'all' || (currentCategory !== 'すべて' && currentCategory !== target.category)) {
         currentFilter = 'all';
         currentCategory = 'すべて';
@@ -1086,7 +1243,7 @@
           wrapper.innerHTML = controls;
           const ta = document.createElement('textarea');
           ta.className = "w-full bg-transparent outline-none text-sm leading-relaxed resize-none min-h-[85px]";
-          ta.placeholder = "いまどうしてる？（引用コメントや長文を入力 / スクショ Ctrl+V 対応）";
+          ta.placeholder = "いまどうしてる？（Xのリンクを貼ると内容ごとアプリに永続保存されます / Ctrl+V スクショ対応）";
           ta.value = block.content;
           ta.addEventListener('input', (e) => {
             editorBlocks[idx].content = e.target.value;
@@ -1111,7 +1268,7 @@
               class="w-full mt-1 bg-transparent text-xs theme-sub border-b border-transparent focus:border-gray-600 outline-none">
           `;
         } else if (block.type === 'embed') {
-          wrapper.innerHTML = controls + renderMediaHtml(block.url) + `
+          wrapper.innerHTML = controls + renderMediaHtml(block.url, block.tweetSnapshot) + `
             <input type="text" placeholder="キャプション・メモ（任意）" value="${block.caption || ''}"
               oninput="updateBlockCaption(${idx}, this.value)"
               class="w-full mt-1 bg-transparent text-xs theme-sub border-b border-transparent focus:border-gray-600 outline-none">
@@ -1199,14 +1356,19 @@
       }
     });
 
-    window.insertUrlBlock = function() {
+    window.insertUrlBlock = async function() {
       const url = prompt("挿入したいURL（本家XのツイートURL・Webサイト・YouTube・動画mp4・画像URL）を入力してください:");
       if (!url || !url.trim()) return;
       let formatted = url.trim();
       if (!/^https?:\/\//i.test(formatted) && !formatted.startsWith('data:')) {
         formatted = 'https://' + formatted;
       }
-      insertBlockAtCursor({ id: crypto.randomUUID(), type: 'embed', url: formatted, caption: '' });
+      const tid = extractTweetId(formatted);
+      let tweetSnapshot = null;
+      if (tid) {
+        tweetSnapshot = await fetchTweetData(tid);
+      }
+      insertBlockAtCursor({ id: crypto.randomUUID(), type: 'embed', url: formatted, caption: '', tweetSnapshot });
     };
 
     window.addTextBlock = function() {
@@ -1232,6 +1394,7 @@
       if (editorBlocks[idx]) editorBlocks[idx].caption = val;
     };
 
+    // ★ 投稿保存時に、含まれているすべてのXツイートURLの内容（スナップショット）を投稿データ内にも埋め込んで保存する
     window.savePost = async function() {
       if (!currentUser) return;
       const title = document.getElementById('post-title').value.trim();
@@ -1239,12 +1402,44 @@
       const cleanedBlocks = editorBlocks.filter(b => b.type !== 'text' || (b.content && b.content.trim().length > 0));
       if (!title && cleanedBlocks.length === 0 && !quotedPostId && !quotedExternalUrl) return;
 
+      // 本文中やブロック内のXツイートURLを検出してスナップショットを確実に保存
+      const embeddedSnapshots = {};
+      for (const b of cleanedBlocks) {
+        if (b.type === 'embed' && b.url) {
+          const tid = extractTweetId(b.url);
+          if (tid) {
+            const snap = await fetchTweetData(tid);
+            if (snap) {
+              b.tweetSnapshot = snap;
+              embeddedSnapshots[tid] = snap;
+            }
+          }
+        } else if (b.type === 'text' && b.content) {
+          const matches = [...b.content.matchAll(/https?:\/\/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)/gi)];
+          for (const m of matches) {
+            const tid = m[1];
+            const snap = await fetchTweetData(tid);
+            if (snap) embeddedSnapshots[tid] = snap;
+          }
+        }
+      }
+
+      let quotedExternalSnapshot = null;
+      if (quotedExternalUrl) {
+        const qTid = extractTweetId(quotedExternalUrl);
+        if (qTid) {
+          quotedExternalSnapshot = await fetchTweetData(qTid);
+        }
+      }
+
       const payload = {
         title,
         category,
         blocks: cleanedBlocks,
         quotedPostId: quotedPostId || null,
         quotedExternalUrl: quotedExternalUrl || null,
+        quotedExternalSnapshot: quotedExternalSnapshot || null,
+        tweetSnapshots: Object.keys(embeddedSnapshots).length > 0 ? embeddedSnapshots : null,
         updatedAt: Date.now()
       };
 
@@ -1264,33 +1459,32 @@
     };
 
     // URLの種類（本家X / YouTube / 動画 / 画像 / 一般Webサイト）を自動判別して表示
-    function renderMediaHtml(url) {
+    function renderMediaHtml(url, savedSnapshot = null) {
       const safeUrl = (url || '').trim();
-      // 0. 本家X（Twitter）のステータスURL → ネイティブ形式でツイート＆引用元を表示
       const tweetId = extractTweetId(safeUrl);
       if (tweetId) {
+        if (savedSnapshot) {
+          tweetCache[tweetId] = savedSnapshot;
+          return buildNativeTweetCardHtml(savedSnapshot, false);
+        }
         if (tweetCache[tweetId]) {
           return buildNativeTweetCardHtml(tweetCache[tweetId], false);
         }
         setTimeout(() => window.hydrateTweetCards && window.hydrateTweetCards(), 10);
-        return `<div data-tweet-id="${tweetId}" data-tweet-url="${safeUrl}" class="my-2 p-4 rounded-2xl border theme-border theme-card text-xs theme-sub animate-pulse">𝕏 ポスト＆引用データを読み込み中...</div>`;
+        return `<div data-tweet-id="${tweetId}" data-tweet-url="${safeUrl}" class="my-2 p-4 rounded-2xl border theme-border theme-card text-xs theme-sub animate-pulse">𝕏 ポスト＆引用データを取得・アーカイブ保存中...</div>`;
       }
-      // 1. YouTube
       const ytMatch = safeUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]{11})/);
       if (ytMatch) {
         return `<div class="aspect-video w-full rounded-xl overflow-hidden my-2 border theme-border">
           <iframe src="https://www.youtube.com/embed/${ytMatch[1]}" class="w-full h-full" allowfullscreen></iframe>
         </div>`;
       }
-      // 2. 動画直リンク
       if (/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(safeUrl)) {
         return `<video src="${safeUrl}" controls class="w-full max-h-96 rounded-xl my-2 bg-black"></video>`;
       }
-      // 3. 画像直リンク
       if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|avif)(\?.*)?$/i.test(safeUrl) || safeUrl.startsWith('data:image/')) {
         return `<img src="${safeUrl}" onclick="openLightbox('${safeUrl}')" class="max-h-96 rounded-xl object-contain my-2 cursor-zoom-in">`;
       }
-      // 4. 一般のWebサイトURL → リンクカード
       let hostname = safeUrl;
       try { hostname = new URL(safeUrl).hostname; } catch (e) {}
       const favicon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=64`;
@@ -1319,10 +1513,46 @@
       renderFeed();
     };
 
+    // ★ ツイート（ポスト）全文をコピーする関数
+    window.copyPostText = async function(id) {
+      const post = postsData.find(p => p.id === id);
+      if (!post) return;
+      const parts = [];
+      if (post.title) parts.push(post.title);
+      (post.blocks || []).forEach(b => {
+        if (b.type === 'text' && b.content) parts.push(b.content);
+        else if (b.type === 'embed' && b.url) parts.push(b.url);
+      });
+      if (post.quotedExternalUrl) parts.push(post.quotedExternalUrl);
+      const textToCopy = parts.join('\n\n');
+      try {
+        await navigator.clipboard.writeText(textToCopy);
+        showToast('ポストをコピーしました');
+      } catch (e) {
+        const ta = document.createElement('textarea');
+        ta.value = textToCopy;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast('ポストをコピーしました');
+      }
+    };
+
     function buildPostItemHtml(post, isChild = false, hasNextSibling = false, replyCount = 0, quoteCount = 0) {
       const dateStr = new Date(post.createdAt || Date.now()).toLocaleString('ja-JP', {
         month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
       });
+
+      // 投稿内に保存されたスナップショットがあればメモリキャッシュへ復元
+      if (post.tweetSnapshots) {
+        Object.entries(post.tweetSnapshots).forEach(([tid, snap]) => {
+          if (!tweetCache[tid]) tweetCache[tid] = snap;
+        });
+      }
+      if (post.quotedExternalSnapshot && post.quotedExternalSnapshot.id) {
+        tweetCache[post.quotedExternalSnapshot.id] = post.quotedExternalSnapshot;
+      }
 
       const totalText = (post.blocks || [])
         .filter(b => b.type === 'text')
@@ -1337,7 +1567,11 @@
         if (b.type === 'text') {
           const rawContent = b.content || '';
           const inlineTweetMatches = [...rawContent.matchAll(/https?:\/\/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)[^\s<]*/gi)];
-          const inlineTweetCards = inlineTweetMatches.map(m => renderMediaHtml(m[0])).join('');
+          const inlineTweetCards = inlineTweetMatches.map(m => {
+            const tid = m[1];
+            const savedSnap = post.tweetSnapshots?.[tid] || tweetCache[tid] || null;
+            return renderMediaHtml(m[0], savedSnap);
+          }).join('');
 
           const escaped = rawContent
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -1352,20 +1586,19 @@
           </figure>`;
         }
         if (b.type === 'embed') {
-          return `<div class="my-2">${renderMediaHtml(b.url)}
+          return `<div class="my-2">${renderMediaHtml(b.url, b.tweetSnapshot)}
             ${b.caption ? `<div class="text-xs theme-sub mt-1">${b.caption}</div>` : ''}
           </div>`;
         }
         return '';
       }).join('');
 
-      // ★ 引用リツイートカードの生成（アプリ内引用 または 本家X引用）
       let quotedCardHtml = '';
       if (post.quotedPostId) {
         const qPost = postsData.find(p => p.id === post.quotedPostId);
         quotedCardHtml = buildInternalQuoteCardHtml(qPost, false);
       } else if (post.quotedExternalUrl) {
-        quotedCardHtml = renderMediaHtml(post.quotedExternalUrl);
+        quotedCardHtml = renderMediaHtml(post.quotedExternalUrl, post.quotedExternalSnapshot);
       }
 
       const targetThreadId = post.parentId || post.id;
@@ -1405,7 +1638,6 @@
               </button>
             ` : ''}
 
-            <!-- 引用リツイート元カード表示 -->
             ${quotedCardHtml}
 
             <!-- アクションバー -->
@@ -1420,7 +1652,7 @@
                 ${!isChild && replyCount > 0 ? `<span class="text-xs">${replyCount}</span>` : ''}
               </button>
 
-              <!-- ★ 引用リツイート（本家Xのリポストアイコン） -->
+              <!-- 引用リツイート -->
               <button onclick="openQuoteModal('${post.id}')" class="group flex items-center gap-1 ${quoteCount > 0 ? 'text-emerald-400' : 'hover:text-emerald-400'} transition" title="このポストを引用リツイート">
                 <div class="p-2 rounded-full group-hover:bg-emerald-500/10 transition">
                   <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -1435,6 +1667,15 @@
                 <div class="p-2 rounded-full group-hover:bg-sky-500/10 transition">
                   <svg class="w-[18px] h-[18px]" fill="${post.bookmarked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"/>
+                  </svg>
+                </div>
+              </button>
+
+              <!-- ★ ツイートをコピーするアイコン -->
+              <button onclick="copyPostText('${post.id}')" class="group flex items-center gap-1 hover:text-sky-400 transition" title="ポスト本文をコピー">
+                <div class="p-2 rounded-full group-hover:bg-sky-500/10 transition">
+                  <svg class="w-[17px] h-[17px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/>
                   </svg>
                 </div>
               </button>
@@ -1535,23 +1776,6 @@
       });
 
       hydrateTweetCards();
-    }
-
-    function renderTags() {
-      const tagCounts = {};
-      postsData.forEach(p => {
-        (p.blocks || []).forEach(b => {
-          if (b.type === 'text' && b.content) {
-            (b.content.match(/#[^\s#]+/g) || []).forEach(t => { tagCounts[t] = (tagCounts[t] || 0) + 1; });
-          }
-        });
-      });
-      const container = document.getElementById('tag-list');
-      const entries = Object.entries(tagCounts);
-      if (entries.length === 0) return;
-      container.innerHTML = entries.map(([tag, count]) =>
-        `<button onclick="filterByTag('${tag}')" class="px-2.5 py-1 rounded-full bg-white/5 theme-accent-text hover:bg-white/10 font-bold">${tag} (${count})</button>`
-      ).join('');
     }
 
     window.filterByTag = function(tag) {
