@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>𝕏 - Personal Note</title>
   
   <!-- X風のファビコン -->
@@ -53,7 +56,6 @@
     .post-card-pad {
       padding: var(--post-padding);
     }
-    /* 長文折りたたみ用のマスク処理 */
     .post-collapsed {
       max-height: 155px;
       overflow: hidden;
@@ -109,13 +111,15 @@
       <div class="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-4 text-white font-black text-4xl">
         𝕏
       </div>
-      <h1 class="text-xl font-bold text-white mb-2">X-Note Personal</h1>
-      <p class="text-xs text-gray-400 mb-6">自分専用の長文・スレッド・引用・メディア同期ノート</p>
+      <h1 class="text-xl font-bold text-white mb-1">X-Note Personal</h1>
+      <p id="login-status-text" class="text-xs text-gray-400 mb-6">認証状態を確認中...</p>
       <button id="login-btn" class="w-full py-3 px-4 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition flex items-center justify-center gap-2">
-        <i data-lucide="log-in" class="w-4 h-4"></i>
-        Googleでログイン
+        <span>Googleでログイン（ポップアップ）</span>
       </button>
-      <p id="auth-error" class="text-xs text-red-400 mt-4 hidden"></p>
+      <button id="login-redirect-btn" class="w-full mt-2.5 py-2.5 px-4 bg-white/10 text-gray-200 font-bold text-xs rounded-full hover:bg-white/15 transition">
+        画面が切り替わらない場合はこちら（リダイレクト認証）
+      </button>
+      <p id="auth-error" class="text-xs text-red-400 mt-4 hidden break-all"></p>
     </div>
   </div>
 
@@ -127,7 +131,7 @@
       <div class="space-y-1">
         <div class="px-3 py-2 text-3xl font-black tracking-tighter flex items-center justify-between">
           <span>𝕏</span>
-          <span class="text-[10px] font-normal theme-sub">v3.2</span>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v3.3</span>
         </div>
         <button id="nav-btn-all" onclick="setFilter('all')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 transition">
           <i data-lucide="home" class="w-5 h-5"></i> <span>ホーム</span>
@@ -196,7 +200,7 @@
               <input id="search-input" type="text" placeholder="検索や #タグ..." class="w-full theme-card border theme-border rounded-full pl-9 pr-3 py-1.5 text-xs outline-none">
             </div>
 
-            <!-- ★ 既存のすべてのXツイートを全文＆動画付きで一括再取得して修復するボタン -->
+            <!-- 既存のすべてのXツイートを全文＆動画付きで一括再取得して修復するボタン -->
             <button onclick="refreshAllTweetsInApp()" class="px-2.5 py-1.5 rounded-full border theme-border text-xs font-bold theme-sub hover:text-white hover:bg-white/5 transition flex items-center gap-1 shrink-0" title="過去のXツイートリンクの全文・動画データを一括で再取得して修復します">
               <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
               <span class="hidden sm:inline">X再取得</span>
@@ -505,11 +509,19 @@
   <!-- Firebase Realtime Database & Auth -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { getDatabase, ref, set, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
+    function safeCreateIcons() {
+      try {
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+          window.lucide.createIcons();
+        }
+      } catch (e) {}
+    }
+
     // =========================================================================
-    // ★ あなたの firebaseConfig（組込済み）
+    // ★ あなたの firebaseConfig（特殊空白文字を完全除去済み）
     // =========================================================================
     const firebaseConfig = {
       apiKey: "AIzaSyDHY8YRAmdJlGdB24inmnX5wmL4Ikt66bA",
@@ -543,7 +555,6 @@
     let isSelectMode = false;
     const selectedPostIds = new Set();
 
-    // 展開状態管理
     const expandedPostIds = new Set();
     const expandedTweetCardIds = new Set();
     const tweetCache = {};
@@ -571,31 +582,80 @@
 
     function showToast(msg) {
       const t = document.getElementById('toast');
+      if (!t) return;
       t.textContent = msg;
       t.classList.remove('opacity-0');
       setTimeout(() => t.classList.add('opacity-0'), 2200);
     }
 
-    document.getElementById('login-btn').addEventListener('click', async () => {
-      try { await signInWithPopup(auth, provider); }
-      catch (err) {
-        const errEl = document.getElementById('auth-error');
-        errEl.textContent = "ログインエラー: " + err.message;
+    // =========================================================================
+    // ★ ログイン処理（ポップアップ ＆ リダイレクト両対応で確実に遷移させる）
+    // =========================================================================
+    getRedirectResult(auth).catch((err) => {
+      const errEl = document.getElementById('auth-error');
+      if (errEl && err) {
+        errEl.textContent = "リダイレクト認証エラー: " + err.message;
         errEl.classList.remove('hidden');
       }
     });
+
+    document.getElementById('login-btn').addEventListener('click', async () => {
+      const errEl = document.getElementById('auth-error');
+      const statusEl = document.getElementById('login-status-text');
+      errEl.classList.add('hidden');
+      statusEl.textContent = "Google認証ウィンドウを開いています...";
+      try {
+        await signInWithPopup(auth, provider);
+      } catch (err) {
+        console.warn("Popup failed, fallback available:", err);
+        if (err.code === 'auth/popup-blocked' || err.code === 'auth/operation-not-supported-in-this-environment') {
+          statusEl.textContent = "リダイレクト認証へ切り替えています...";
+          await signInWithRedirect(auth, provider);
+        } else {
+          statusEl.textContent = "ログインボタンを押してください";
+          errEl.textContent = "ログインエラー (" + (err.code || '') + "): " + err.message;
+          errEl.classList.remove('hidden');
+        }
+      }
+    });
+
+    document.getElementById('login-redirect-btn').addEventListener('click', async () => {
+      const statusEl = document.getElementById('login-status-text');
+      statusEl.textContent = "Googleログイン画面へ移動しています...";
+      try {
+        await signInWithRedirect(auth, provider);
+      } catch (err) {
+        const errEl = document.getElementById('auth-error');
+        errEl.textContent = "エラー: " + err.message;
+        errEl.classList.remove('hidden');
+      }
+    });
+
     document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+
+    let dbSubscribedUid = null;
 
     onAuthStateChanged(auth, (user) => {
       currentUser = user;
+      const loginScreen = document.getElementById('login-screen');
+      const appScreen = document.getElementById('app-screen');
+      const statusEl = document.getElementById('login-status-text');
+
       if (!user) {
-        document.getElementById('login-screen').classList.remove('hidden');
-        document.getElementById('app-screen').classList.add('hidden');
+        dbSubscribedUid = null;
+        if (statusEl) statusEl.textContent = "自分専用の長文・スレッド・引用・メディア同期ノート";
+        loginScreen.classList.remove('hidden');
+        appScreen.classList.add('hidden');
         return;
       }
-      document.getElementById('login-screen').classList.add('hidden');
-      document.getElementById('app-screen').classList.remove('hidden');
-      document.getElementById('user-email').textContent = user.email;
+
+      // ★ ログイン成功時は即座にロック画面を消してメイン画面へ遷移
+      loginScreen.classList.add('hidden');
+      appScreen.classList.remove('hidden');
+      document.getElementById('user-email').textContent = user.email || '';
+
+      if (dbSubscribedUid === user.uid) return;
+      dbSubscribedUid = user.uid;
 
       onValue(ref(db, `users/${user.uid}/tweetSnapshots`), (snap) => {
         const val = snap.val() || {};
@@ -704,11 +764,13 @@
     const resizerEl = document.getElementById('sidebar-resizer');
     let isResizingSidebar = false;
 
-    resizerEl.addEventListener('mousedown', (e) => {
-      isResizingSidebar = true;
-      document.body.style.cursor = 'col-resize';
-      e.preventDefault();
-    });
+    if (resizerEl) {
+      resizerEl.addEventListener('mousedown', (e) => {
+        isResizingSidebar = true;
+        document.body.style.cursor = 'col-resize';
+        e.preventDefault();
+      });
+    }
 
     window.addEventListener('mousemove', (e) => {
       if (!isResizingSidebar) return;
@@ -1041,7 +1103,7 @@
         document.getElementById('filter-banner-title').textContent = `メディア付きポスト一覧（${count} 件）`;
         document.getElementById('filter-banner-desc').textContent = '写真や動画・リンクが含まれるポストのみを表示しています';
       }
-      lucide.createIcons();
+      safeCreateIcons();
     }
 
     window.setFilter = function(f) {
@@ -1159,14 +1221,13 @@
     };
 
     // =========================================================================
-    // ★ 本家X（Twitter）の全文＆動画抽出・フォールバック再生・一括修復処理
+    // 本家X（Twitter）の全文＆動画抽出・フォールバック再生・一括修復処理
     // =========================================================================
     function extractTweetId(url) {
       const m = (url || '').match(/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)/i);
       return m ? m[1] : null;
     }
 
-    // あらゆる長文ツイート形式（Note Tweet / Articleブロック / raw_text）から最長の全文を取り出す
     function extractFullTweetText(t) {
       if (!t) return '';
       const candidates = [
@@ -1179,7 +1240,6 @@
 
       let longest = candidates.sort((a, b) => b.length - a.length)[0] || '';
 
-      // Xの長文記事（Article）の段落ブロックがある場合はすべて連結
       if (t.article) {
         const artTitle = t.article.title ? `【${t.article.title}】\n\n` : '';
         let artBody = '';
@@ -1197,7 +1257,6 @@
       return longest;
     }
 
-    // 動画・GIF・複数メディア配列からすべての写真とMP4動画ストリームを抽出
     function extractTweetMedia(t) {
       const photos = [];
       const videos = [];
@@ -1237,9 +1296,6 @@
           if (m.type === 'photo' || m.type === 'image') addPhoto(m.url);
           else if (m.type === 'video' || m.type === 'gif' || m.type === 'animated_gif') addVideo(m);
         });
-        if (t.media.mosaic && Array.isArray(t.media.mosaic.formats)) {
-          // モザイク結合画像は個別photosが取れていれば不要
-        }
       }
       if (Array.isArray(t.media_extended)) {
         t.media_extended.forEach(m => {
@@ -1257,7 +1313,6 @@
     function mergeBestSnapshot(snapA, snapB) {
       if (!snapA) return snapB;
       if (!snapB) return snapA;
-      // 文字数が長い方（途中で切れていない方）の本文と、動画が入っている方のメディアを優先結合
       const bestText = (snapB.text || '').length > (snapA.text || '').length ? snapB.text : snapA.text;
       const bestVideos = (snapA.media?.videos?.length || 0) >= (snapB.media?.videos?.length || 0)
         ? snapA.media?.videos
@@ -1300,7 +1355,6 @@
       };
     }
 
-    // fxtwitter と vxtwitter の両方から取得し、より全文が長く動画が揃っている方を採用する
     async function fetchTweetData(tweetId, forceRefresh = false) {
       const cached = tweetCache[tweetId];
       if (cached && cached.schemaVersion === CURRENT_SCHEMA_VERSION && !forceRefresh) {
@@ -1316,9 +1370,7 @@
           const data = await res.json();
           if (data && data.tweet) fxSnap = sanitizeTweetSnapshot(data.tweet);
         }
-      } catch (e) {
-        console.warn('fxtwitter fetch error:', e);
-      }
+      } catch (e) {}
 
       try {
         const res2 = await fetch(`https://api.vxtwitter.com/Twitter/status/${tweetId}`);
@@ -1326,9 +1378,7 @@
           const data2 = await res2.json();
           if (data2 && (data2.tweetID || data2.text)) vxSnap = sanitizeTweetSnapshot(data2);
         }
-      } catch (e2) {
-        console.warn('vxtwitter fetch error:', e2);
-      }
+      } catch (e2) {}
 
       const finalSnapshot = mergeBestSnapshot(fxSnap, vxSnap);
       if (finalSnapshot) {
@@ -1346,14 +1396,12 @@
       return cached || null;
     }
 
-    // ★ 単一のXツイートカードを最新データ（全文・動画）で強制再取得する関数
     window.forceRefreshSingleTweet = async function(tweetId, e) {
       if (e) e.stopPropagation();
       if (!tweetId) return;
       showToast('𝕏 ツイートの全文・動画データを再取得中...');
       const updated = await fetchTweetData(tweetId, true);
       if (updated) {
-        // 投稿データ内に古いスナップショットが埋め込まれている場合も上書き更新する
         if (currentUser) {
           const dbUpdates = {};
           postsData.forEach(p => {
@@ -1376,11 +1424,10 @@
         renderFeed();
         showToast('全文・動画データを最新状態に更新しました');
       } else {
-        showToast('再取得に失敗しました（元ポストが削除済みの可能性があります）');
+        showToast('再取得に失敗しました');
       }
     };
 
-    // ★ アプリ内の全投稿に含まれるXツイートを一括で再取得して全文＆動画対応にアップデートする関数
     window.refreshAllTweetsInApp = async function() {
       const allTweetIds = new Set();
       postsData.forEach(p => {
@@ -1411,7 +1458,6 @@
       showToast(`全${allTweetIds.size}件のXツイートを更新しました！`);
     };
 
-    // ★ 動画プレイヤーのエラー時自動切替 ＆ 手動でのX公式プレイヤー切替
     window.switchToOfficialTwitterPlayer = function(containerId, tweetId, e) {
       if (e) e.stopPropagation();
       const container = document.getElementById(containerId);
@@ -1429,20 +1475,17 @@
     window.handleDirectVideoError = function(videoEl, rawUrl, tweetId, containerId) {
       const step = Number(videoEl.getAttribute('data-retry-step') || '0');
       if (step === 0 && tweetId) {
-        // ステップ1: d.fxtwitter.comの直MP4リダイレクトストリームへ切り替え
         videoEl.setAttribute('data-retry-step', '1');
         videoEl.src = `https://d.fxtwitter.com/i/status/${tweetId}.mp4`;
         videoEl.load();
         return;
       }
       if (step === 1 && tweetId) {
-        // ステップ2: d.vxtwitter.comのストリームへ切り替え
         videoEl.setAttribute('data-retry-step', '2');
         videoEl.src = `https://d.vxtwitter.com/i/status/${tweetId}.mp4`;
         videoEl.load();
         return;
       }
-      // ステップ3: 公式埋め込みプレイヤーへ自動切り替え
       if (tweetId && containerId) {
         switchToOfficialTwitterPlayer(containerId, tweetId, null);
       }
@@ -1462,7 +1505,6 @@
           const vidContainerId = `vid_box_${contextKey}_${tweetId}_${vIdx}`.replace(/[^a-zA-Z0-9_-]/g, '_');
           return `
             <div id="${vidContainerId}" class="my-2 rounded-xl overflow-hidden border theme-border bg-black" onclick="event.stopPropagation()">
-              <!-- ★ `<source>` を使わず `<video src="...">` に直接指定することで onerror フォールバックを100%確実に発火させる -->
               <video src="${v.url}"
                 poster="${v.thumbnail_url || ''}"
                 controls playsinline preload="metadata"
@@ -1483,7 +1525,6 @@
       return html;
     }
 
-    // ツイートカードの「さらに表示 / 折りたたむ」切り替え
     window.toggleExpandTweetCard = function(cardKey, e) {
       if (e) e.stopPropagation();
       if (expandedTweetCardIds.has(cardKey)) {
@@ -1503,7 +1544,6 @@
 
       const rawText = t.text || '';
       const lineCount = rawText.split('\n').length;
-      // 140文字超 または 5行以上ならすべて折りたたみ式にする
       const isLongTweet = rawText.length > 140 || lineCount >= 5;
       const isExpanded = expandedTweetCardIds.has(cardKey);
       const shouldCollapse = isLongTweet && !isExpanded;
@@ -1533,7 +1573,6 @@
             </div>
           </div>
 
-          <!-- ツイート本文（長文時は折りたたみマスク適用） -->
           <div class="whitespace-pre-wrap post-text leading-relaxed ${shouldCollapse ? 'post-collapsed' : ''}">${escapedText}</div>
 
           ${isLongTweet ? `
@@ -1542,7 +1581,6 @@
             </button>
           ` : ''}
 
-          <!-- 添付写真・動画プレイヤー -->
           ${renderTweetMediaGrid(t.media, t.id, cardKey)}
           ${quoteHtml}
         </div>
@@ -1649,7 +1687,6 @@
         return;
       }
 
-      // 「ツイート取込」でもネイティブカード（全文折りたたみ＆動画プレイヤー付き）としてブロック追加する
       if (editorBlocks.length === 1 && editorBlocks[0].type === 'text' && !editorBlocks[0].content.trim()) {
         editorBlocks = [{
           id: crypto.randomUUID(),
@@ -1676,6 +1713,7 @@
 
     window.renderEditor = function() {
       const container = document.getElementById('editor-blocks');
+      if (!container) return;
       container.innerHTML = '';
 
       editorBlocks.forEach((block, idx) => {
@@ -1732,7 +1770,7 @@
       });
 
       updateCharCount();
-      lucide.createIcons();
+      safeCreateIcons();
       hydrateTweetCards();
     };
 
@@ -1740,7 +1778,8 @@
       const total = editorBlocks
         .filter(b => b.type === 'text')
         .reduce((sum, b) => sum + (b.content ? b.content.length : 0), 0);
-      document.getElementById('char-count').textContent = `${total.toLocaleString()} 文字`;
+      const el = document.getElementById('char-count');
+      if (el) el.textContent = `${total.toLocaleString()} 文字`;
     }
 
     function insertBlockAtCursor(mediaBlock) {
@@ -1914,7 +1953,6 @@
       const safeUrl = (url || '').trim();
       const tweetId = extractTweetId(safeUrl);
       if (tweetId) {
-        // 最新スキーマ（CURRENT_SCHEMA_VERSION = 3）のスナップショットのみ即時利用し、古い途中切れスナップショットは自動的に再取得へ回す
         const snap = (savedSnapshot && savedSnapshot.schemaVersion === CURRENT_SCHEMA_VERSION)
           ? savedSnapshot
           : (tweetCache[tweetId] && tweetCache[tweetId].schemaVersion === CURRENT_SCHEMA_VERSION ? tweetCache[tweetId] : null);
@@ -2190,6 +2228,7 @@
 
     function renderFeed() {
       const list = document.getElementById('feed-list');
+      if (!list) return;
       const query = document.getElementById('search-input').value.trim().toLowerCase();
       list.innerHTML = '';
 
@@ -2289,7 +2328,7 @@
     updateNavigationUI();
     renderCategories();
     renderEditor();
-    lucide.createIcons();
+    safeCreateIcons();
   </script>
 </body>
 </html>
