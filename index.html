@@ -73,6 +73,10 @@
       color: var(--text-main);
       word-break: break-word;
     }
+    /* 万が一混入したiframeや壊れたオブジェクトは強制非表示 */
+    .rich-content iframe, .rich-content object, .rich-content embed, .rich-content frame {
+      display: none !important;
+    }
     .rich-content h1 {
       font-size: 1.45em;
       font-weight: 800;
@@ -264,7 +268,7 @@
       <div class="space-y-1">
         <div class="px-3 py-2 text-3xl font-black tracking-tighter flex items-center justify-between">
           <span>𝕏</span>
-          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v3.4</span>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v3.5</span>
         </div>
         <button id="nav-btn-all" onclick="setFilter('all')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 transition">
           <i data-lucide="home" class="w-5 h-5"></i> <span>ホーム</span>
@@ -648,7 +652,6 @@
       } catch (e) {}
     }
 
-    // Markedの初期設定（改行・GitHub風テーブル有効化）
     if (window.marked && typeof window.marked.setOptions === 'function') {
       window.marked.setOptions({ gfm: true, breaks: true });
     }
@@ -721,7 +724,7 @@
     }
 
     // =========================================================================
-    // ★ ChatGPT / Gemini のHTML＆Markdownを整形・無害化して完全再現するヘルパー
+    // ★ ChatGPT / Gemini コピペ時の 404 iframe 混入を完全排除するサニタイザー
     // =========================================================================
     const ALLOWED_RICH_TAGS = [
       'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
@@ -735,23 +738,39 @@
 
     function cleanRichHtml(rawHtml) {
       if (!rawHtml) return '';
+
+      // まずDOM上で iframe / object / script / style / button / svg 等のノイズ要素を物理的に全削除
+      const temp = document.createElement('div');
+      temp.innerHTML = rawHtml;
+      temp.querySelectorAll('iframe, frame, frameset, object, embed, applet, script, style, link, meta, button, svg, canvas, form, input, textarea, select').forEach(el => el.remove());
+
+      // 相対パスの壊れたリンク（404の原因）は無害なテキストに変換し、http(s)リンクのみ残す
+      temp.querySelectorAll('a').forEach(a => {
+        const href = (a.getAttribute('href') || '').trim();
+        if (!/^https?:\/\//i.test(href)) {
+          a.removeAttribute('href');
+        } else {
+          a.setAttribute('target', '_blank');
+          a.setAttribute('rel', 'noopener noreferrer');
+        }
+      });
+
+      let cleaned = temp.innerHTML;
       if (window.DOMPurify) {
-        const cleaned = window.DOMPurify.sanitize(rawHtml, {
+        cleaned = window.DOMPurify.sanitize(cleaned, {
           ALLOWED_TAGS: ALLOWED_RICH_TAGS,
-          ALLOWED_ATTR: ['href', 'target', 'rel', 'colspan', 'rowspan']
+          ALLOWED_ATTR: ['href', 'target', 'rel', 'colspan', 'rowspan'],
+          FORBID_TAGS: ['iframe', 'object', 'embed', 'frame', 'script', 'style', 'button', 'svg', 'form', 'input']
         });
-        return cleaned;
       }
-      return rawHtml;
+      return cleaned;
     }
 
-    // テキストにMarkdown記法（見出し・太字・表・リスト・コードブロック）が含まれるか判定
     function hasMarkdownSyntax(text) {
       if (!text) return false;
       return /(^|\n)\s*#{1,6}\s+|\*\*[^*]+\*\*|(^|\n)\s*[-*+]\s+|(^|\n)\s*\d+\.\s+|```|\|.+\|\s*\n\s*\|[-:| ]+\|/m.test(text);
     }
 
-    // タイムライン表示用にブロック内容をHTMLへ変換（HTML保存済み or Markdown自動変換 or 通常テキスト）
     function renderFormattedBlockContent(block) {
       const rawHtml = (block.html || '').trim();
       const rawText = (block.content || '').trim();
@@ -759,13 +778,11 @@
       let outputHtml = '';
 
       if (rawHtml) {
-        // 1. ChatGPTやGeminiからリッチHTMLとしてペーストされたデータがある場合
+        // 既に保存されたHTMLからもiframe等のノイズを完全に除去して描画
         outputHtml = cleanRichHtml(rawHtml);
       } else if (hasMarkdownSyntax(rawText) && window.marked) {
-        // 2. Markdown形式（コピーボタン経由など）の場合、Markedで見出し・太字・表へ変換
         outputHtml = cleanRichHtml(window.marked.parse(rawText));
       } else {
-        // 3. 通常のプレーンテキスト
         const escaped = (block.content || '')
           .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
           .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="theme-accent-text hover:underline break-all">$1</a>')
@@ -773,7 +790,6 @@
         return `<div class="whitespace-pre-wrap post-text my-1">${escaped}</div>`;
       }
 
-      // リッチHTML内のリンクを安全に別タブで開くようにし、ハッシュタグもクリック可能にする
       const wrapper = document.createElement('div');
       wrapper.innerHTML = outputHtml;
       wrapper.querySelectorAll('a').forEach(a => {
@@ -785,11 +801,10 @@
       return `<div class="rich-content my-1">${wrapper.innerHTML}</div>`;
     }
 
-    // HTML文字列からプレーンテキストを抽出（検索・文字数カウント・一括コピー用）
     function htmlToPlainText(htmlStr) {
       if (!htmlStr) return '';
       const temp = document.createElement('div');
-      temp.innerHTML = htmlStr
+      temp.innerHTML = cleanRichHtml(htmlStr)
         .replace(/<\/(p|div|h[1-6]|li|tr|blockquote|pre)>/gi, '$&\n')
         .replace(/<br\s*\/?>/gi, '\n')
         .replace(/<\/(td|th)>/gi, '$&\t');
@@ -1925,7 +1940,7 @@
     };
 
     // =========================================================================
-    // ★ リッチテキスト対応エディタ（ChatGPT / Gemini の書式＆表そのままコピペ対応）
+    // リッチテキスト対応エディタ
     // =========================================================================
     window.execRichCmd = function(cmd, val = null) {
       document.execCommand(cmd, false, val);
@@ -1949,7 +1964,7 @@
                   <button type="button" onmousedown="event.preventDefault(); execRichCmd('bold')" class="px-1.5 py-0.5 hover:bg-white/10 rounded font-extrabold text-white" title="太字">B</button>
                   <button type="button" onmousedown="event.preventDefault(); execRichCmd('formatBlock', 'H2')" class="px-1.5 py-0.5 hover:bg-white/10 rounded font-bold text-white" title="大見出し">H2</button>
                   <button type="button" onmousedown="event.preventDefault(); execRichCmd('formatBlock', 'H3')" class="px-1.5 py-0.5 hover:bg-white/10 rounded font-bold text-white" title="中見出し">H3</button>
-                  <button type="button" onmousedown="event.preventDefault(); execRichCmd(' formatBlock', 'P')" class="px-1.5 py-0.5 hover:bg-white/10 rounded text-gray-300" title="標準文字">標準</button>
+                  <button type="button" onmousedown="event.preventDefault(); execRichCmd('formatBlock', 'P')" class="px-1.5 py-0.5 hover:bg-white/10 rounded text-gray-300" title="標準文字">標準</button>
                   <button type="button" onmousedown="event.preventDefault(); execRichCmd('insertUnorderedList')" class="px-1.5 py-0.5 hover:bg-white/10 rounded text-gray-300" title="箇条書き">• リスト</button>
                 </div>
               ` : ''}
@@ -1970,7 +1985,9 @@
           richDiv.setAttribute('data-placeholder', 'いまどうしてる？（ChatGPTやGeminiの回答を貼り付けると、文字サイズ・太字・表までそのまま再現されます）');
 
           if (block.html && block.html.trim()) {
-            richDiv.innerHTML = block.html;
+            const safeHtml = cleanRichHtml(block.html);
+            richDiv.innerHTML = safeHtml;
+            editorBlocks[idx].html = safeHtml;
           } else if (block.content) {
             if (hasMarkdownSyntax(block.content) && window.marked) {
               const parsed = cleanRichHtml(window.marked.parse(block.content));
@@ -1992,13 +2009,11 @@
             updateCharCount();
           });
 
-          // ★ ペースト処理：ChatGPT/GeminiのリッチHTML または Markdownテキストを自動判別して見出し・太字・表をそのまま挿入
           richDiv.addEventListener('paste', async (e) => {
             activeBlockIndex = idx;
             const clip = e.clipboardData;
             if (!clip) return;
 
-            // 1. クリップボードに画像（スクショ）がある場合は画像ブロックとして挿入
             const items = Array.from(clip.items || []);
             const imageItems = items.filter(item => item.type.startsWith('image/'));
             if (imageItems.length > 0) {
@@ -2022,14 +2037,14 @@
 
             let htmlToInsert = '';
 
-            if (htmlData && htmlData.trim()) {
-              // 2. ChatGPTやGeminiの画面を直接選択コピーした場合（リッチHTMLとして取得）
-              htmlToInsert = cleanRichHtml(htmlData);
-            } else if (textData && hasMarkdownSyntax(textData) && window.marked) {
-              // 3. ChatGPTやGeminiの「コピーボタン」でMarkdownとしてコピーした場合 → 見出し・太字・表のHTMLへ即座に変換
+            if (textData && hasMarkdownSyntax(textData) && window.marked) {
+              // 1. Markdown構文が含まれる場合はMarkdownパーサーを最優先（余計なUIゴミが入らないため最も綺麗）
               htmlToInsert = cleanRichHtml(window.marked.parse(textData));
+            } else if (htmlData && htmlData.trim()) {
+              // 2. 画面選択コピーによるリッチHTML（iframeやボタン等のノイズを完全除去して挿入）
+              htmlToInsert = cleanRichHtml(htmlData);
             } else if (textData) {
-              // 4. プレーンテキスト
+              // 3. 通常のプレーンテキスト
               htmlToInsert = textData
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
                 .replace(/\r?\n/g, '<br>');
@@ -2127,7 +2142,6 @@
       e.target.value = '';
     });
 
-    // エディタ欄外にフォーカスがある時のCtrl+V画像貼り付けフォールバック
     window.addEventListener('paste', async (e) => {
       const modalOpen = !document.getElementById('post-modal').classList.contains('hidden');
       if (!modalOpen) return;
@@ -2188,7 +2202,12 @@
       if (!currentUser) return;
       const title = document.getElementById('post-title').value.trim();
       const category = document.getElementById('post-category').value || 'メモ';
-      const cleanedBlocks = editorBlocks.filter(b => {
+      const cleanedBlocks = editorBlocks.map(b => {
+        if (b.type === 'text' && b.html) {
+          return { ...b, html: cleanRichHtml(b.html), content: htmlToPlainText(b.html) };
+        }
+        return b;
+      }).filter(b => {
         if (b.type !== 'text') return true;
         const plain = (b.content || htmlToPlainText(b.html || '')).trim();
         const hasTable = (b.html || '').includes('<table');
