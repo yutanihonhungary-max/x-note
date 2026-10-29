@@ -32,6 +32,7 @@
       --post-font-size: 15px;
       --post-line-height: 1.6;
       --post-padding: 16px;
+      --right-sidebar-w: 230px;
     }
     body {
       background-color: var(--bg-main);
@@ -77,13 +78,29 @@
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #2f3336; border-radius: 3px; }
+    input[type="range"] {
+      accent-color: var(--accent);
+    }
   </style>
 </head>
 <body class="min-h-screen selection:bg-sky-500 selection:text-white">
 
   <!-- コピー完了などのミニトースト通知 -->
-  <div id="toast" class="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full theme-accent-bg text-white text-xs font-bold shadow-2xl transition-opacity duration-200 opacity-0 pointer-events-none">
-    ポストをコピーしました
+  <div id="toast" class="fixed bottom-24 md:bottom-10 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-full theme-accent-bg text-white text-xs font-bold shadow-2xl transition-opacity duration-200 opacity-0 pointer-events-none">
+    コピーしました
+  </div>
+
+  <!-- ★ 複数選択モード時の下部一括コピーバー -->
+  <div id="bulk-action-bar" class="hidden fixed bottom-16 md:bottom-6 left-1/2 -translate-x-1/2 z-40 theme-card border theme-border rounded-full px-4 py-2 shadow-2xl flex items-center gap-3 backdrop-blur-md">
+    <span id="bulk-count-label" class="text-xs font-bold theme-accent-text whitespace-nowrap">0件選択中</span>
+    <button onclick="selectAllVisiblePosts()" class="text-xs px-2.5 py-1 rounded-full bg-white/5 hover:bg-white/10 transition whitespace-nowrap">全選択</button>
+    <button onclick="copySelectedPosts()" class="text-xs px-4 py-1.5 rounded-full theme-accent-bg text-white font-bold hover:opacity-90 transition flex items-center gap-1.5 whitespace-nowrap shadow">
+      <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+      <span>まとめてコピー</span>
+    </button>
+    <button onclick="toggleSelectMode(false)" class="p-1 rounded-full hover:bg-white/10 theme-sub hover:text-white" title="選択モードを終了">
+      <i data-lucide="x" class="w-4 h-4"></i>
+    </button>
   </div>
 
   <!-- 未ログイン時のロック画面 -->
@@ -103,10 +120,10 @@
   </div>
 
   <!-- メイン画面 -->
-  <div id="app-screen" class="hidden max-w-6xl mx-auto min-h-screen flex">
+  <div id="app-screen" class="hidden max-w-7xl mx-auto min-h-screen flex">
     
     <!-- 左サイドバー（PC用） -->
-    <aside class="hidden md:flex flex-col w-64 border-r theme-border p-4 sticky top-0 h-screen justify-between shrink-0">
+    <aside class="hidden md:flex flex-col w-60 border-r theme-border p-4 sticky top-0 h-screen justify-between shrink-0">
       <div class="space-y-1">
         <div class="px-3 py-2 text-3xl font-black tracking-tighter flex items-center gap-2">
           <span>𝕏</span>
@@ -121,7 +138,7 @@
           <i data-lucide="image" class="w-5 h-5"></i> <span>メディア</span>
         </button>
         <button onclick="openCategoryModal()" class="lg:hidden w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 theme-sub hover:text-white transition">
-          <i data-lucide="folder-kanban" class="w-5 h-5"></i> <span>カテゴリー管理</span>
+          <i data-lucide="folder-kanban" class="w-5 h-5"></i> <span>タブ管理</span>
         </button>
         <button onclick="openProfileModal()" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 theme-sub hover:text-white transition">
           <i data-lucide="user" class="w-5 h-5"></i> <span>プロフィール設定</span>
@@ -155,31 +172,37 @@
     <!-- 中央タイムライン（スマホでの左右スワイプ切り替え対応領域） -->
     <main id="main-swipe-area" class="flex-1 min-w-0 border-r theme-border pb-24 md:pb-12">
       
-      <!-- 上部固定ヘッダー＆カテゴリータブ -->
+      <!-- 上部固定ヘッダー＆タブバー -->
       <header class="sticky top-0 z-30 backdrop-blur-md bg-black/80 border-b theme-border">
-        <div class="px-4 py-2.5 flex items-center justify-between gap-3">
-          <div class="flex items-center gap-2.5">
+        <div class="px-4 py-2.5 flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
             <button id="back-home-btn" onclick="setFilter('all')" class="hidden p-1.5 -ml-1 rounded-full hover:bg-white/10 transition" title="ホームに戻る">
               <i data-lucide="arrow-left" class="w-4 h-4"></i>
             </button>
             <span class="md:hidden font-black text-2xl">𝕏</span>
             <div>
               <div class="flex items-center gap-2">
-                <h2 id="header-title" class="font-bold text-base leading-tight">ホーム</h2>
+                <h2 id="header-title" class="font-bold text-base leading-tight whitespace-nowrap">ホーム</h2>
                 <span id="header-mode-badge" class="hidden text-[10px] px-2 py-0.5 rounded-full font-bold bg-sky-500/20 text-sky-400 border border-sky-500/30"></span>
               </div>
               <p id="header-subtitle" class="text-[11px] theme-sub hidden"></p>
             </div>
           </div>
-          <div class="flex items-center gap-2 flex-1 max-w-xs">
-            <div class="relative w-full">
+
+          <div class="flex items-center gap-2 flex-1 justify-end max-w-sm">
+            <div class="relative flex-1">
               <i data-lucide="search" class="w-4 h-4 theme-sub absolute left-3 top-1/2 -translate-y-1/2"></i>
-              <input id="search-input" type="text" placeholder="検索や #タグ..." class="w-full theme-card border theme-border rounded-full pl-9 pr-4 py-1.5 text-xs outline-none">
+              <input id="search-input" type="text" placeholder="検索や #タグ..." class="w-full theme-card border theme-border rounded-full pl-9 pr-3 py-1.5 text-xs outline-none">
             </div>
+            <!-- ★ 複数選択してまとめてコピーするモード切替ボタン -->
+            <button id="select-mode-btn" onclick="toggleSelectMode()" class="px-3 py-1.5 rounded-full border theme-border text-xs font-bold theme-sub hover:text-white hover:bg-white/5 transition flex items-center gap-1.5 shrink-0" title="複数のポストを選択してまとめてコピー">
+              <i data-lucide="check-square" class="w-3.5 h-3.5"></i>
+              <span class="hidden sm:inline">複数選択</span>
+            </button>
           </div>
         </div>
 
-        <!-- カテゴリー（タブ）バー -->
+        <!-- タブバー -->
         <div id="category-tabs" class="flex items-center overflow-x-auto border-t theme-border text-xs font-bold no-scrollbar"></div>
       </header>
 
@@ -207,7 +230,7 @@
             <img id="profile-avatar" src="" class="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-black object-cover bg-zinc-900">
             <div class="flex gap-2">
               <button onclick="openCategoryModal()" class="lg:hidden px-3.5 py-1.5 rounded-full border theme-border text-xs font-bold hover:bg-white/5 transition">
-                タブ編集
+                タブ管理
               </button>
               <button onclick="openProfileModal()" class="px-4 py-1.5 rounded-full border theme-border text-xs font-bold hover:bg-white/5 transition">
                 プロフィールを編集
@@ -224,27 +247,43 @@
       <div id="feed-list" class="divide-y theme-border min-h-[50vh]"></div>
     </main>
 
-    <!-- ★ 右サイドバー（PC用：カテゴリー管理を直接表示） -->
-    <aside class="hidden lg:block w-80 p-4 sticky top-0 h-screen overflow-y-auto shrink-0">
-      <div class="theme-card rounded-2xl p-4 border theme-border space-y-3.5">
-        <div class="flex items-center justify-between">
-          <h3 class="font-bold text-sm flex items-center gap-2">
-            <i data-lucide="folder-kanban" class="w-4 h-4 theme-accent-text"></i>
-            <span>カテゴリー（タブ）管理</span>
+    <!-- ★ 境界線ドラッグリサイザー（マウスで左右に引っ張って右サイドバーの幅を自由に変更可能） -->
+    <div id="sidebar-resizer" class="hidden lg:flex w-1.5 cursor-col-resize items-center justify-center hover:bg-sky-500/40 active:bg-sky-500 transition select-none shrink-0" title="左右にドラッグしてタブ管理の幅を調整">
+      <div class="w-0.5 h-10 bg-zinc-700 rounded-full"></div>
+    </div>
+
+    <!-- ★ 右サイドバー（PC用：コンパクト＆スライダーで幅を自由調整できる「タブ管理」） -->
+    <aside id="right-sidebar" style="width: var(--right-sidebar-w);" class="hidden lg:block p-2.5 sticky top-0 h-screen overflow-y-auto shrink-0">
+      <div class="theme-card rounded-2xl p-3 border theme-border space-y-2.5">
+        <div class="flex items-center justify-between gap-1">
+          <h3 class="font-bold text-xs flex items-center gap-1.5 truncate">
+            <i data-lucide="folder-kanban" class="w-3.5 h-3.5 theme-accent-text shrink-0"></i>
+            <span class="truncate">タブ管理</span>
           </h3>
-          <span class="text-[11px] theme-sub">ドラッグで並替</span>
+          <span id="sidebar-width-label" class="text-[10px] theme-sub shrink-0">230px</span>
         </div>
 
-        <div class="flex gap-1.5">
-          <input id="sidebar-new-category-input" type="text" placeholder="新しいタブ名を追加..."
+        <!-- 幅調整スライダー -->
+        <div class="flex items-center gap-2 bg-black/30 px-2.5 py-1.5 rounded-xl border theme-border">
+          <span class="text-[10px] theme-sub whitespace-nowrap">幅</span>
+          <input id="sidebar-width-slider" type="range" min="160" max="420" step="5" value="230"
+            oninput="changeRightSidebarWidth(this.value, false)"
+            onchange="changeRightSidebarWidth(this.value, true)"
+            class="w-full h-1 rounded-lg cursor-pointer">
+        </div>
+
+        <!-- 新規タブ追加 -->
+        <div class="flex gap-1">
+          <input id="sidebar-new-category-input" type="text" placeholder="新規タブ名..."
             onkeydown="if(event.key==='Enter') addCategory('sidebar-new-category-input')"
-            class="flex-1 bg-black/40 border theme-border rounded-xl px-3 py-2 text-xs outline-none focus:border-sky-500">
-          <button onclick="addCategory('sidebar-new-category-input')" class="px-3.5 py-2 rounded-xl theme-accent-bg text-white font-bold text-xs shrink-0 hover:opacity-90 transition">
-            追加
+            class="min-w-0 flex-1 bg-black/40 border theme-border rounded-xl px-2.5 py-1.5 text-xs outline-none focus:border-sky-500">
+          <button onclick="addCategory('sidebar-new-category-input')" class="px-2.5 py-1.5 rounded-xl theme-accent-bg text-white font-bold text-xs shrink-0 hover:opacity-90 transition">
+            ＋
           </button>
         </div>
 
-        <div id="sidebar-category-manage-list" class="space-y-1.5 text-xs"></div>
+        <!-- タブ一覧（ドラッグ並び替え・アイコン操作） -->
+        <div id="sidebar-category-manage-list" class="space-y-1 text-xs"></div>
       </div>
     </aside>
   </div>
@@ -282,7 +321,7 @@
         <!-- スレッド返信先表示 -->
         <div id="reply-parent-info" class="hidden text-xs px-3 py-2 rounded-lg bg-white/5 border theme-border theme-sub"></div>
 
-        <!-- カテゴリー選択＆タイトル -->
+        <!-- タブ選択＆タイトル -->
         <div class="flex flex-wrap items-center gap-2">
           <select id="post-category" class="theme-card border theme-border rounded-full px-3 py-1 text-xs font-bold outline-none"></select>
           <input id="post-title" type="text" placeholder="タイトル（任意）" class="flex-1 bg-transparent text-sm font-bold placeholder-gray-500 outline-none border-b theme-border pb-1">
@@ -433,19 +472,19 @@
   </div>
 
   <!-- ========================================================================= -->
-  <!-- 4. カテゴリー（タブ）管理モーダル（スマホ・タブレット用、外側タップで閉じる） -->
+  <!-- 4. タブ管理モーダル（スマホ・タブレット用、外側タップで閉じる） -->
   <!-- ========================================================================= -->
   <div id="category-modal" onclick="if(event.target === this) closeCategoryModal()" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
     <div onclick="event.stopPropagation()" class="w-full max-w-md theme-card border theme-border rounded-2xl p-5 space-y-4">
       <div class="flex items-center justify-between border-b theme-border pb-3">
         <div>
-          <h3 class="font-bold text-base">カテゴリー（タブ）管理</h3>
+          <h3 class="font-bold text-base">タブ管理</h3>
           <p class="text-[11px] theme-sub">左のハンドル（≡）をドラッグして順番を入れ替えられます</p>
         </div>
         <button onclick="closeCategoryModal()" class="p-1 hover:bg-white/10 rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
       <div class="flex gap-2">
-        <input id="modal-new-category-input" type="text" placeholder="新しいカテゴリー名（例：勉強・料理・日記）"
+        <input id="modal-new-category-input" type="text" placeholder="新しいタブ名（例：勉強・料理・日記）"
           onkeydown="if(event.key==='Enter') addCategory('modal-new-category-input')"
           class="flex-1 bg-black/40 border theme-border rounded-xl px-3 py-2 text-xs outline-none">
         <button onclick="addCategory('modal-new-category-input')" class="px-4 py-2 rounded-xl theme-accent-bg text-white font-bold text-xs shrink-0">追加</button>
@@ -496,8 +535,11 @@
     let quotedPostId = null;
     let quotedExternalUrl = null;
 
+    // ★ 複数選択＆一括コピー用ステート
+    let isSelectMode = false;
+    const selectedPostIds = new Set();
+
     const expandedPostIds = new Set();
-    // ★ メモリ＋Firebase永続保存された本家Xのツイートデータキャッシュ（元ツイが消えても残る）
     const tweetCache = {};
 
     let profileData = {
@@ -513,7 +555,8 @@
       lineHeight: '1.65',
       padding: '16px',
       bgMode: 'black',
-      accent: '#1d9bf0'
+      accent: '#1d9bf0',
+      rightSidebarWidth: 230
     };
 
     let editorBlocks = [{ id: crypto.randomUUID(), type: 'text', content: '' }];
@@ -524,7 +567,7 @@
       const t = document.getElementById('toast');
       t.textContent = msg;
       t.classList.remove('opacity-0');
-      setTimeout(() => t.classList.add('opacity-0'), 1800);
+      setTimeout(() => t.classList.add('opacity-0'), 1900);
     }
 
     document.getElementById('login-btn').addEventListener('click', async () => {
@@ -548,7 +591,6 @@
       document.getElementById('app-screen').classList.remove('hidden');
       document.getElementById('user-email').textContent = user.email;
 
-      // ★ Firebaseに永続保存された本家Xツイートスナップショットを購読（元ツイート削除対策）
       onValue(ref(db, `users/${user.uid}/tweetSnapshots`), (snap) => {
         const val = snap.val() || {};
         Object.entries(val).forEach(([tid, tData]) => {
@@ -603,6 +645,13 @@
       root.style.setProperty('--post-padding', themeSettings.padding);
       root.style.setProperty('--accent', themeSettings.accent);
 
+      const w = Math.min(420, Math.max(160, Number(themeSettings.rightSidebarWidth) || 230));
+      root.style.setProperty('--right-sidebar-w', `${w}px`);
+      const slider = document.getElementById('sidebar-width-slider');
+      const label = document.getElementById('sidebar-width-label');
+      if (slider) slider.value = w;
+      if (label) label.textContent = `${w}px`;
+
       if (themeSettings.bgMode === 'light') {
         root.style.setProperty('--bg-main', '#ffffff');
         root.style.setProperty('--bg-card', '#f7f9f9');
@@ -631,14 +680,141 @@
     };
 
     // =========================================================================
-    // ★ カテゴリー管理（アイコン化 ＆ 本家X風のドラッグ並び替え）
+    // ★ 右サイドバー（タブ管理）のスライダー＆ドラッグ境界線による幅調整
+    // =========================================================================
+    window.changeRightSidebarWidth = function(val, persist = false) {
+      const w = Math.min(420, Math.max(160, Number(val) || 230));
+      themeSettings.rightSidebarWidth = w;
+      document.documentElement.style.setProperty('--right-sidebar-w', `${w}px`);
+      const slider = document.getElementById('sidebar-width-slider');
+      const label = document.getElementById('sidebar-width-label');
+      if (slider) slider.value = w;
+      if (label) label.textContent = `${w}px`;
+      if (persist && currentUser) {
+        set(ref(db, `users/${currentUser.uid}/settings`), themeSettings);
+      }
+    };
+
+    const resizerEl = document.getElementById('sidebar-resizer');
+    let isResizingSidebar = false;
+
+    resizerEl.addEventListener('mousedown', (e) => {
+      isResizingSidebar = true;
+      document.body.style.cursor = 'col-resize';
+      e.preventDefault();
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isResizingSidebar) return;
+      const rightEdge = document.getElementById('app-screen').getBoundingClientRect().right;
+      const newWidth = Math.round(rightEdge - e.clientX);
+      changeRightSidebarWidth(newWidth, false);
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (isResizingSidebar) {
+        isResizingSidebar = false;
+        document.body.style.cursor = '';
+        changeRightSidebarWidth(themeSettings.rightSidebarWidth, true);
+      }
+    });
+
+    // =========================================================================
+    // ★ 複数ポスト選択 ＆ 一括コピー機能
+    // =========================================================================
+    window.toggleSelectMode = function(forceState) {
+      isSelectMode = typeof forceState === 'boolean' ? forceState : !isSelectMode;
+      if (!isSelectMode) selectedPostIds.clear();
+      updateBulkUI();
+      renderFeed();
+    };
+
+    window.togglePostSelection = function(postId, e) {
+      if (e) e.stopPropagation();
+      if (selectedPostIds.has(postId)) {
+        selectedPostIds.delete(postId);
+      } else {
+        selectedPostIds.add(postId);
+      }
+      updateBulkUI();
+      renderFeed();
+    };
+
+    window.selectAllVisiblePosts = function() {
+      const visibleEls = document.querySelectorAll('[data-selectable-post-id]');
+      const allIds = Array.from(visibleEls).map(el => el.getAttribute('data-selectable-post-id'));
+      const allSelected = allIds.length > 0 && allIds.every(id => selectedPostIds.has(id));
+      if (allSelected) {
+        allIds.forEach(id => selectedPostIds.delete(id));
+      } else {
+        allIds.forEach(id => selectedPostIds.add(id));
+      }
+      updateBulkUI();
+      renderFeed();
+    };
+
+    function updateBulkUI() {
+      const bar = document.getElementById('bulk-action-bar');
+      const countLabel = document.getElementById('bulk-count-label');
+      const modeBtn = document.getElementById('select-mode-btn');
+
+      if (isSelectMode) {
+        bar.classList.remove('hidden');
+        countLabel.textContent = `${selectedPostIds.size}件選択中`;
+        modeBtn.className = "px-3 py-1.5 rounded-full border theme-accent-border theme-accent-bg text-white text-xs font-bold transition flex items-center gap-1.5 shrink-0";
+      } else {
+        bar.classList.add('hidden');
+        modeBtn.className = "px-3 py-1.5 rounded-full border theme-border text-xs font-bold theme-sub hover:text-white hover:bg-white/5 transition flex items-center gap-1.5 shrink-0";
+      }
+    }
+
+    function formatSinglePostForCopy(post) {
+      const parts = [];
+      const dateStr = new Date(post.createdAt || Date.now()).toLocaleString('ja-JP', {
+        year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+      });
+      parts.push(`[${dateStr}]${post.category ? ` [${post.category}]` : ''}${post.title ? ` ${post.title}` : ''}`);
+      (post.blocks || []).forEach(b => {
+        if (b.type === 'text' && b.content) parts.push(b.content);
+        else if (b.type === 'embed' && b.url) parts.push(b.url);
+      });
+      if (post.quotedExternalUrl) parts.push(`引用: ${post.quotedExternalUrl}`);
+      return parts.join('\n');
+    }
+
+    window.copySelectedPosts = async function() {
+      if (selectedPostIds.size === 0) {
+        showToast('コピーするポストを選択してください');
+        return;
+      }
+      const selectedList = postsData
+        .filter(p => selectedPostIds.has(p.id))
+        .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+
+      const combinedText = selectedList.map(formatSinglePostForCopy).join('\n\n────────────────\n\n');
+      try {
+        await navigator.clipboard.writeText(combinedText);
+      } catch (e) {
+        const ta = document.createElement('textarea');
+        ta.value = combinedText;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      showToast(`${selectedList.length}件のポストをまとめてコピーしました`);
+      toggleSelectMode(false);
+    };
+
+    // =========================================================================
+    // タブ管理（ドラッグ並び替え＆アイコン操作）
     // =========================================================================
     let dragSrcCatIdx = null;
 
     function buildCategoryManageItemsHtml() {
       const userCats = categories.filter(c => c !== 'すべて');
       if (userCats.length === 0) {
-        return `<div class="p-4 text-center theme-sub text-xs">カテゴリーがありません</div>`;
+        return `<div class="p-3 text-center theme-sub text-xs">タブがありません</div>`;
       }
       return userCats.map((cat, idx) => `
         <div draggable="true"
@@ -647,25 +823,25 @@
              ondrop="handleCatDrop(event, ${idx})"
              ondragend="handleCatDragEnd(event)"
              data-cat-idx="${idx}"
-             class="cat-drag-row flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-black/40 border theme-border hover:border-gray-600 transition select-none">
-          <div class="flex items-center gap-2.5 min-w-0 flex-1">
-            <span class="cursor-grab active:cursor-grabbing theme-sub hover:text-white p-1 -ml-1" title="ドラッグして順番を変更">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+             class="cat-drag-row flex items-center justify-between gap-1 px-2.5 py-2 rounded-xl bg-black/40 border theme-border hover:border-gray-600 transition select-none">
+          <div class="flex items-center gap-1.5 min-w-0 flex-1">
+            <span class="cursor-grab active:cursor-grabbing theme-sub hover:text-white p-0.5 shrink-0" title="ドラッグして順番を変更">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5"/>
               </svg>
             </span>
-            <span onclick="selectCategory('${cat}')" class="font-bold text-sm truncate cursor-pointer hover:underline flex-1">${cat}</span>
+            <span onclick="selectCategory('${cat}')" class="font-bold text-xs truncate cursor-pointer hover:underline flex-1 ${currentCategory === cat ? 'theme-accent-text' : ''}">${cat}</span>
           </div>
-          <div class="flex items-center gap-1 shrink-0">
+          <div class="flex items-center gap-0.5 shrink-0">
             <!-- 名前変更（ペンアイコン） -->
-            <button onclick="renameCategory('${cat}')" class="p-1.5 rounded-full hover:bg-sky-500/15 theme-sub hover:text-sky-400 transition" title="名前変更">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <button onclick="renameCategory('${cat}')" class="p-1 rounded-full hover:bg-sky-500/15 theme-sub hover:text-sky-400 transition" title="名前変更">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"/>
               </svg>
             </button>
             <!-- 削除（ゴミ箱アイコン） -->
-            <button onclick="deleteCategory('${cat}')" class="p-1.5 rounded-full hover:bg-red-500/15 theme-sub hover:text-red-400 transition" title="削除">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <button onclick="deleteCategory('${cat}')" class="p-1 rounded-full hover:bg-red-500/15 theme-sub hover:text-red-400 transition" title="削除">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/>
               </svg>
             </button>
@@ -782,9 +958,7 @@
       renderFeed();
     };
 
-    // =========================================================================
-    // ★ スマホでの左右スワイプによるカテゴリー（タブ）切り替え
-    // =========================================================================
+    // スマホでの左右スワイプによるタブ切り替え
     let touchStartX = 0;
     let touchStartY = 0;
 
@@ -799,15 +973,12 @@
       if (!e.changedTouches || e.changedTouches.length !== 1) return;
       const dx = e.changedTouches[0].clientX - touchStartX;
       const dy = e.changedTouches[0].clientY - touchStartY;
-      // 横方向の移動が70px以上、かつ縦スクロールより十分大きい場合のみタブ切り替え発動
       if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.8) {
         const curIdx = categories.indexOf(currentCategory);
         if (curIdx === -1) return;
         if (dx < 0 && curIdx < categories.length - 1) {
-          // 左へスワイプ → 次のタブ
           selectCategory(categories[curIdx + 1]);
         } else if (dx > 0 && curIdx > 0) {
-          // 右へスワイプ → 前のタブ
           selectCategory(categories[curIdx - 1]);
         }
       }
@@ -880,9 +1051,6 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    // =========================================================================
-    // モーダル開閉＆引用リツイート設定
-    // =========================================================================
     window.openPostModal = function(parentId = null, quoteId = null) {
       editingPostId = null;
       replyParentId = parentId;
@@ -990,15 +1158,12 @@
       closeProfileModal();
     };
 
-    // =========================================================================
-    // ★ 本家X（Twitter）のツイート内容をFirebaseへ永続保存（元ツイが消えても残る仕組み）
-    // =========================================================================
+    // 本家X（Twitter）のツイート内容をFirebaseへ永続保存
     function extractTweetId(url) {
       const m = (url || '').match(/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)/i);
       return m ? m[1] : null;
     }
 
-    // 必要なフィールドだけを抽出してスリムな永続スナップショットにする
     function sanitizeTweetSnapshot(t) {
       if (!t) return null;
       return {
@@ -1021,10 +1186,7 @@
     }
 
     async function fetchTweetData(tweetId) {
-      // 1. すでにFirebaseまたはメモリに保存されたスナップショットがあればそれを返す（元ツイが削除されていても表示可能）
       if (tweetCache[tweetId]) return tweetCache[tweetId];
-
-      // 2. 初回取得時はAPIから取得し、即座にFirebaseの `tweetSnapshots` に永続保存する
       try {
         const res = await fetch(`https://api.fxtwitter.com/status/${tweetId}`);
         if (!res.ok) throw new Error('Fetch failed');
@@ -1071,7 +1233,7 @@
         : '';
       const escapedText = (t.text || '')
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="theme-accent-text hover:underline break-all">$1</a>');
+        .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="theme-accent-text hover:underline break-all">$1</a>');
 
       const quoteHtml = (t.quote && !isQuoted) ? buildNativeTweetCardHtml(t.quote, true) : '';
 
@@ -1117,7 +1279,7 @@
       const firstImage = (qPost.blocks || []).find(b => b.type === 'image');
 
       return `
-        <div onclick="${isModalPreview ? '' : `jumpToPost('${qPost.id}')`}" class="my-2 p-3.5 rounded-2xl border theme-border bg-white/[0.02] hover:bg-white/[0.05] transition ${isModalPreview ? '' : 'cursor-pointer'}">
+        <div onclick="${isModalPreview ? '' : `event.stopPropagation(); jumpToPost('${qPost.id}')`}" class="my-2 p-3.5 rounded-2xl border theme-border bg-white/[0.02] hover:bg-white/[0.05] transition ${isModalPreview ? '' : 'cursor-pointer'}">
           <div class="flex items-center justify-between gap-2 mb-1">
             <div class="flex items-center gap-2 min-w-0 text-xs">
               <img src="${profileData.avatar || DEFAULT_AVATAR}" class="w-5 h-5 rounded-full object-cover border theme-border shrink-0">
@@ -1394,7 +1556,6 @@
       if (editorBlocks[idx]) editorBlocks[idx].caption = val;
     };
 
-    // ★ 投稿保存時に、含まれているすべてのXツイートURLの内容（スナップショット）を投稿データ内にも埋め込んで保存する
     window.savePost = async function() {
       if (!currentUser) return;
       const title = document.getElementById('post-title').value.trim();
@@ -1402,7 +1563,6 @@
       const cleanedBlocks = editorBlocks.filter(b => b.type !== 'text' || (b.content && b.content.trim().length > 0));
       if (!title && cleanedBlocks.length === 0 && !quotedPostId && !quotedExternalUrl) return;
 
-      // 本文中やブロック内のXツイートURLを検出してスナップショットを確実に保存
       const embeddedSnapshots = {};
       for (const b of cleanedBlocks) {
         if (b.type === 'embed' && b.url) {
@@ -1458,7 +1618,6 @@
       closePostModal();
     };
 
-    // URLの種類（本家X / YouTube / 動画 / 画像 / 一般Webサイト）を自動判別して表示
     function renderMediaHtml(url, savedSnapshot = null) {
       const safeUrl = (url || '').trim();
       const tweetId = extractTweetId(safeUrl);
@@ -1480,16 +1639,16 @@
         </div>`;
       }
       if (/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(safeUrl)) {
-        return `<video src="${safeUrl}" controls class="w-full max-h-96 rounded-xl my-2 bg-black"></video>`;
+        return `<video src="${safeUrl}" controls onclick="event.stopPropagation()" class="w-full max-h-96 rounded-xl my-2 bg-black"></video>`;
       }
       if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|avif)(\?.*)?$/i.test(safeUrl) || safeUrl.startsWith('data:image/')) {
-        return `<img src="${safeUrl}" onclick="openLightbox('${safeUrl}')" class="max-h-96 rounded-xl object-contain my-2 cursor-zoom-in">`;
+        return `<img src="${safeUrl}" onclick="event.stopPropagation(); openLightbox('${safeUrl}')" class="max-h-96 rounded-xl object-contain my-2 cursor-zoom-in">`;
       }
       let hostname = safeUrl;
       try { hostname = new URL(safeUrl).hostname; } catch (e) {}
       const favicon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=64`;
       return `
-        <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="block my-2 p-3.5 rounded-2xl border theme-border theme-card hover:bg-white/[0.04] transition group">
+        <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="block my-2 p-3.5 rounded-2xl border theme-border theme-card hover:bg-white/[0.04] transition group">
           <div class="flex items-center gap-3">
             <img src="${favicon}" class="w-9 h-9 rounded-lg bg-white/10 p-1.5 object-contain shrink-0" onerror="this.style.display='none'">
             <div class="min-w-0 flex-1">
@@ -1504,7 +1663,8 @@
       `;
     }
 
-    window.toggleExpandPost = function(id) {
+    window.toggleExpandPost = function(id, e) {
+      if (e) e.stopPropagation();
       if (expandedPostIds.has(id)) {
         expandedPostIds.delete(id);
       } else {
@@ -1513,8 +1673,8 @@
       renderFeed();
     };
 
-    // ★ ツイート（ポスト）全文をコピーする関数
-    window.copyPostText = async function(id) {
+    window.copyPostText = async function(id, e) {
+      if (e) e.stopPropagation();
       const post = postsData.find(p => p.id === id);
       if (!post) return;
       const parts = [];
@@ -1528,7 +1688,7 @@
       try {
         await navigator.clipboard.writeText(textToCopy);
         showToast('ポストをコピーしました');
-      } catch (e) {
+      } catch (err) {
         const ta = document.createElement('textarea');
         ta.value = textToCopy;
         document.body.appendChild(ta);
@@ -1544,7 +1704,6 @@
         month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
       });
 
-      // 投稿内に保存されたスナップショットがあればメモリキャッシュへ復元
       if (post.tweetSnapshots) {
         Object.entries(post.tweetSnapshots).forEach(([tid, snap]) => {
           if (!tweetCache[tid]) tweetCache[tid] = snap;
@@ -1575,13 +1734,13 @@
 
           const escaped = rawContent
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-            .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="theme-accent-text hover:underline break-all">$1</a>')
-            .replace(/(^|\s)(#[^\s#<]+)/g, '$1<span onclick="filterByTag(\'$2\')" class="theme-accent-text hover:underline cursor-pointer">$2</span>');
+            .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="theme-accent-text hover:underline break-all">$1</a>')
+            .replace(/(^|\s)(#[^\s#<]+)/g, '$1<span onclick="event.stopPropagation(); filterByTag(\'$2\')" class="theme-accent-text hover:underline cursor-pointer">$2</span>');
           return `<p class="whitespace-pre-wrap post-text my-1">${escaped}</p>${inlineTweetCards}`;
         }
         if (b.type === 'image') {
           return `<figure class="my-2">
-            <img src="${b.url}" onclick="openLightbox('${b.url}')" class="max-h-96 rounded-2xl border theme-border object-contain cursor-zoom-in">
+            <img src="${b.url}" onclick="event.stopPropagation(); openLightbox('${b.url}')" class="max-h-96 rounded-2xl border theme-border object-contain cursor-zoom-in">
             ${b.caption ? `<figcaption class="text-xs theme-sub mt-1">${b.caption}</figcaption>` : ''}
           </figure>`;
         }
@@ -1602,9 +1761,23 @@
       }
 
       const targetThreadId = post.parentId || post.id;
+      const isSelected = selectedPostIds.has(post.id);
 
       return `
-        <div id="post-item-${post.id}" class="flex gap-3 ${isChild ? 'pt-3' : ''} rounded-xl transition">
+        <div id="post-item-${post.id}"
+             data-selectable-post-id="${post.id}"
+             onclick="${isSelectMode ? `togglePostSelection('${post.id}', event)` : ''}"
+             class="flex gap-3 ${isChild ? 'pt-3' : ''} rounded-xl transition ${isSelectMode ? 'cursor-pointer' : ''} ${isSelected ? 'bg-sky-500/10 ring-1 ring-sky-500/40 p-2 -m-2' : ''}">
+          
+          <!-- ★ 複数選択モード時のチェックボックス -->
+          ${isSelectMode ? `
+            <div class="pt-2 shrink-0">
+              <div class="w-5 h-5 rounded-md border flex items-center justify-center transition ${isSelected ? 'theme-accent-bg border-transparent text-white' : 'border-gray-500 bg-black/40'}">
+                ${isSelected ? `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>` : ''}
+              </div>
+            </div>
+          ` : ''}
+
           <div class="flex flex-col items-center shrink-0">
             <img src="${profileData.avatar || DEFAULT_AVATAR}" class="w-10 h-10 rounded-full object-cover border theme-border">
             ${hasNextSibling ? `<div class="w-0.5 flex-1 bg-zinc-800 my-1"></div>` : ''}
@@ -1633,7 +1806,7 @@
             </div>
 
             ${isLongPost ? `
-              <button onclick="toggleExpandPost('${post.id}')" class="mt-1 text-xs font-bold theme-accent-text hover:underline block">
+              <button onclick="toggleExpandPost('${post.id}', event)" class="mt-1 text-xs font-bold theme-accent-text hover:underline block">
                 ${shouldCollapse ? 'さらに表示' : '折りたたむ'}
               </button>
             ` : ''}
@@ -1643,7 +1816,7 @@
             <!-- アクションバー -->
             <div class="flex items-center justify-between max-w-md mt-2 -ml-2 text-xs theme-sub select-none">
               <!-- スレッド返信 -->
-              <button onclick="openPostModal('${targetThreadId}')" class="group flex items-center gap-1 hover:text-sky-400 transition" title="スレッドに返信">
+              <button onclick="event.stopPropagation(); openPostModal('${targetThreadId}')" class="group flex items-center gap-1 hover:text-sky-400 transition" title="スレッドに返信">
                 <div class="p-2 rounded-full group-hover:bg-sky-500/10 transition">
                   <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z"/>
@@ -1653,7 +1826,7 @@
               </button>
 
               <!-- 引用リツイート -->
-              <button onclick="openQuoteModal('${post.id}')" class="group flex items-center gap-1 ${quoteCount > 0 ? 'text-emerald-400' : 'hover:text-emerald-400'} transition" title="このポストを引用リツイート">
+              <button onclick="event.stopPropagation(); openQuoteModal('${post.id}')" class="group flex items-center gap-1 ${quoteCount > 0 ? 'text-emerald-400' : 'hover:text-emerald-400'} transition" title="このポストを引用リツイート">
                 <div class="p-2 rounded-full group-hover:bg-emerald-500/10 transition">
                   <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"/>
@@ -1663,7 +1836,7 @@
               </button>
 
               <!-- ブックマーク -->
-              <button onclick="toggleBookmark('${post.id}', ${!!post.bookmarked})" class="group flex items-center gap-1 ${post.bookmarked ? 'text-sky-400' : 'hover:text-sky-400'} transition" title="ブックマーク">
+              <button onclick="event.stopPropagation(); toggleBookmark('${post.id}', ${!!post.bookmarked})" class="group flex items-center gap-1 ${post.bookmarked ? 'text-sky-400' : 'hover:text-sky-400'} transition" title="ブックマーク">
                 <div class="p-2 rounded-full group-hover:bg-sky-500/10 transition">
                   <svg class="w-[18px] h-[18px]" fill="${post.bookmarked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"/>
@@ -1671,8 +1844,8 @@
                 </div>
               </button>
 
-              <!-- ★ ツイートをコピーするアイコン -->
-              <button onclick="copyPostText('${post.id}')" class="group flex items-center gap-1 hover:text-sky-400 transition" title="ポスト本文をコピー">
+              <!-- 単体コピーアイコン -->
+              <button onclick="copyPostText('${post.id}', event)" class="group flex items-center gap-1 hover:text-sky-400 transition" title="このポストをコピー">
                 <div class="p-2 rounded-full group-hover:bg-sky-500/10 transition">
                   <svg class="w-[17px] h-[17px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/>
@@ -1682,7 +1855,7 @@
 
               <!-- ピン留め -->
               ${!isChild ? `
-                <button onclick="togglePin('${post.id}', ${!!post.pinned})" class="group flex items-center gap-1 ${post.pinned ? 'text-sky-400' : 'hover:text-sky-400'} transition" title="プロフィールに固定">
+                <button onclick="event.stopPropagation(); togglePin('${post.id}', ${!!post.pinned})" class="group flex items-center gap-1 ${post.pinned ? 'text-sky-400' : 'hover:text-sky-400'} transition" title="プロフィールに固定">
                   <div class="p-2 rounded-full group-hover:bg-sky-500/10 transition">
                     <svg class="w-[18px] h-[18px]" fill="${post.pinned ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z"/>
@@ -1692,7 +1865,7 @@
               ` : ''}
 
               <!-- 編集 -->
-              <button onclick="startEdit('${post.id}')" class="group flex items-center gap-1 hover:text-sky-400 transition" title="編集">
+              <button onclick="event.stopPropagation(); startEdit('${post.id}')" class="group flex items-center gap-1 hover:text-sky-400 transition" title="編集">
                 <div class="p-2 rounded-full group-hover:bg-sky-500/10 transition">
                   <svg class="w-[17px] h-[17px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"/>
@@ -1701,7 +1874,7 @@
               </button>
 
               <!-- 削除 -->
-              <button onclick="deletePost('${post.id}')" class="group flex items-center gap-1 hover:text-red-400 transition" title="削除">
+              <button onclick="event.stopPropagation(); deletePost('${post.id}')" class="group flex items-center gap-1 hover:text-red-400 transition" title="削除">
                 <div class="p-2 rounded-full group-hover:bg-red-500/10 transition">
                   <svg class="w-[17px] h-[17px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/>
