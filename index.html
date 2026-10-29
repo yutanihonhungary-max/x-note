@@ -19,7 +19,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="X-Note">
   
-  <!-- Tailwind CSS, Lucide Icons, Marked (Markdown変換), DOMPurify (安全なHTML整形) -->
+  <!-- Tailwind CSS, Lucide Icons, Marked, DOMPurify -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -66,14 +66,13 @@
       -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
     }
 
-    /* ★ ChatGPT / Gemini のコピペ（見出し・太字・表・リスト・コード）を完全再現するリッチスタイル */
+    /* ChatGPT / Gemini のコピペ（見出し・太字・表・リスト・コード）再現スタイル */
     .rich-content {
       font-size: var(--post-font-size);
       line-height: var(--post-line-height);
       color: var(--text-main);
       word-break: break-word;
     }
-    /* 万が一混入したiframeや壊れたオブジェクトは強制非表示 */
     .rich-content iframe, .rich-content object, .rich-content embed, .rich-content frame {
       display: none !important;
     }
@@ -164,7 +163,6 @@
       color: inherit;
       font-size: inherit;
     }
-    /* 表（テーブル）の完全再現スタイル */
     .rich-content table {
       width: 100%;
       border-collapse: collapse;
@@ -192,7 +190,6 @@
       text-decoration: underline;
     }
 
-    /* リッチエディタ入力欄のプレースホルダー表示 */
     .rich-editor-box:empty:before {
       content: attr(data-placeholder);
       color: #71767b;
@@ -268,7 +265,7 @@
       <div class="space-y-1">
         <div class="px-3 py-2 text-3xl font-black tracking-tighter flex items-center justify-between">
           <span>𝕏</span>
-          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v3.5</span>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v3.6</span>
         </div>
         <button id="nav-btn-all" onclick="setFilter('all')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 transition">
           <i data-lucide="home" class="w-5 h-5"></i> <span>ホーム</span>
@@ -675,7 +672,7 @@
     const provider = new GoogleAuthProvider();
 
     const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%231d9bf0'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='central' text-anchor='middle' fill='%23ffffff' font-family='sans-serif' font-weight='900' font-size='52'%3E%F0%9D%95%8F%3C/text%3E%3C/svg%3E";
-    const CURRENT_SCHEMA_VERSION = 3;
+    const CURRENT_SCHEMA_VERSION = 4;
 
     let currentUser = null;
     let postsData = [];
@@ -724,6 +721,35 @@
     }
 
     // =========================================================================
+    // ★ YouTubeのあらゆるURLから確実に11文字の動画IDだけを抽出する関数（404防止）
+    // =========================================================================
+    function extractYouTubeId(rawUrl) {
+      if (!rawUrl || typeof rawUrl !== 'string') return null;
+      const clean = rawUrl.trim();
+      try {
+        const u = new URL(clean);
+        const host = u.hostname.replace(/^www\./i, '').toLowerCase();
+        let vid = null;
+        if (host === 'youtu.be') {
+          vid = u.pathname.split('/').filter(Boolean)[0];
+        } else if (host.endsWith('youtube.com') || host.endsWith('youtube-nocookie.com')) {
+          if (u.searchParams.get('v')) {
+            vid = u.searchParams.get('v');
+          } else {
+            const parts = u.pathname.split('/').filter(Boolean);
+            if (['embed', 'shorts', 'live', 'v'].includes(parts[0]) && parts[1]) {
+              vid = parts[1];
+            }
+          }
+        }
+        if (vid && /^[A-Za-z0-9_-]{11}$/.test(vid)) return vid;
+      } catch (e) {}
+
+      const fallback = clean.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/|live\/|v\/))([A-Za-z0-9_-]{11})/);
+      return fallback ? fallback[1] : null;
+    }
+
+    // =========================================================================
     // ★ ChatGPT / Gemini コピペ時の 404 iframe 混入を完全排除するサニタイザー
     // =========================================================================
     const ALLOWED_RICH_TAGS = [
@@ -738,13 +764,10 @@
 
     function cleanRichHtml(rawHtml) {
       if (!rawHtml) return '';
-
-      // まずDOM上で iframe / object / script / style / button / svg 等のノイズ要素を物理的に全削除
       const temp = document.createElement('div');
       temp.innerHTML = rawHtml;
       temp.querySelectorAll('iframe, frame, frameset, object, embed, applet, script, style, link, meta, button, svg, canvas, form, input, textarea, select').forEach(el => el.remove());
 
-      // 相対パスの壊れたリンク（404の原因）は無害なテキストに変換し、http(s)リンクのみ残す
       temp.querySelectorAll('a').forEach(a => {
         const href = (a.getAttribute('href') || '').trim();
         if (!/^https?:\/\//i.test(href)) {
@@ -778,7 +801,6 @@
       let outputHtml = '';
 
       if (rawHtml) {
-        // 既に保存されたHTMLからもiframe等のノイズを完全に除去して描画
         outputHtml = cleanRichHtml(rawHtml);
       } else if (hasMarkdownSyntax(rawText) && window.marked) {
         outputHtml = cleanRichHtml(window.marked.parse(rawText));
@@ -1446,10 +1468,11 @@
     };
 
     // =========================================================================
-    // 本家X（Twitter）の全文＆動画抽出・フォールバック再生・一括修復処理
+    // ★ 本家X（Twitter）の全文＆動画ストリーム抽出（404を起こすiframeフォールバックを完全廃止）
     // =========================================================================
     function extractTweetId(url) {
-      const m = (url || '').match(/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)/i);
+      if (!url || typeof url !== 'string') return null;
+      const m = url.match(/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)/i);
       return m ? m[1] : null;
     }
 
@@ -1489,7 +1512,7 @@
       const seenVideoUrls = new Set();
 
       const addPhoto = (url) => {
-        if (url && typeof url === 'string' && !seenPhotoUrls.has(url)) {
+        if (url && typeof url === 'string' && /^https?:\/\//i.test(url) && !seenPhotoUrls.has(url)) {
           seenPhotoUrls.add(url);
           photos.push({ url });
         }
@@ -1497,17 +1520,22 @@
 
       const addVideo = (vObj) => {
         if (!vObj) return;
-        let bestUrl = vObj.url || '';
+        const candidateUrls = [];
         if (Array.isArray(vObj.variants)) {
           const mp4s = vObj.variants
-            .filter(vr => vr && vr.url && (vr.content_type === 'video/mp4' || /\.mp4(\?|$)/i.test(vr.url)))
+            .filter(vr => vr && vr.url && /^https?:\/\//i.test(vr.url) && (vr.content_type === 'video/mp4' || /\.mp4(\?|$)/i.test(vr.url)))
             .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-          if (mp4s.length > 0) bestUrl = mp4s[0].url;
+          mp4s.forEach(m => candidateUrls.push(m.url));
         }
-        if (bestUrl && !seenVideoUrls.has(bestUrl)) {
-          seenVideoUrls.add(bestUrl);
+        if (vObj.url && /^https?:\/\//i.test(vObj.url)) {
+          candidateUrls.push(vObj.url);
+        }
+        const primaryUrl = candidateUrls[0] || '';
+        if (primaryUrl && !seenVideoUrls.has(primaryUrl)) {
+          seenVideoUrls.add(primaryUrl);
           videos.push({
-            url: bestUrl,
+            url: primaryUrl,
+            backupUrls: candidateUrls.slice(1),
             thumbnail_url: vObj.thumbnail_url || vObj.poster || vObj.thumb || '',
             type: vObj.type || 'video'
           });
@@ -1647,6 +1675,7 @@
           }
         }
         renderFeed();
+        renderEditor();
         showToast('全文・動画データを最新状態に更新しました');
       } else {
         showToast('再取得に失敗しました');
@@ -1684,36 +1713,43 @@
       showToast(`全${allTweetIds.size}件のXツイートを更新しました！`);
     };
 
-    window.switchToOfficialTwitterPlayer = function(containerId, tweetId, e) {
-      if (e) e.stopPropagation();
-      const container = document.getElementById(containerId);
-      if (!container || !tweetId) return;
-      container.innerHTML = `
-        <div class="w-full rounded-xl overflow-hidden my-1 border theme-border bg-black">
-          <iframe src="[https://platform.twitter.com/embed/Tweet.html?id=$](https://platform.twitter.com/embed/Tweet.html?id=$){tweetId}&theme=dark&dnt=true"
-            class="w-full min-h-[420px] border-0"
-            allow="autoplay; fullscreen; picture-in-picture"
-            allowfullscreen loading="lazy"></iframe>
-        </div>
-      `;
-    };
+    // ★ 動画ストリームのエラー時は `<video>` のまま別ストリームURLを試行し、決して404 iframeにはしない
+    window.handleSafeVideoFallback = function(videoEl, tweetId, posterUrl) {
+      const step = Number(videoEl.getAttribute('data-fallback-step') || '0');
+      const backupsRaw = videoEl.getAttribute('data-backups') || '';
+      const backups = backupsRaw ? backupsRaw.split('|').filter(Boolean) : [];
 
-    window.handleDirectVideoError = function(videoEl, rawUrl, tweetId, containerId) {
-      const step = Number(videoEl.getAttribute('data-retry-step') || '0');
-      if (step === 0 && tweetId) {
-        videoEl.setAttribute('data-retry-step', '1');
+      if (step < backups.length) {
+        videoEl.setAttribute('data-fallback-step', String(step + 1));
+        videoEl.src = backups[step];
+        videoEl.load();
+        return;
+      }
+      if (step === backups.length && tweetId) {
+        videoEl.setAttribute('data-fallback-step', String(step + 1));
         videoEl.src = `[https://d.fxtwitter.com/i/status/$](https://d.fxtwitter.com/i/status/$){tweetId}.mp4`;
         videoEl.load();
         return;
       }
-      if (step === 1 && tweetId) {
-        videoEl.setAttribute('data-retry-step', '2');
+      if (step === backups.length + 1 && tweetId) {
+        videoEl.setAttribute('data-fallback-step', String(step + 1));
         videoEl.src = `[https://d.vxtwitter.com/i/status/$](https://d.vxtwitter.com/i/status/$){tweetId}.mp4`;
         videoEl.load();
         return;
       }
-      if (tweetId && containerId) {
-        switchToOfficialTwitterPlayer(containerId, tweetId, null);
+
+      // 全ての直ストリームがブロックされた場合は、404にならないクリーンなサムネイル＋外部再生カードを表示
+      const box = videoEl.parentElement;
+      if (box) {
+        const xUrl = tweetId ? `[https://x.com/i/status/$](https://x.com/i/status/$){tweetId}` : '#';
+        box.innerHTML = `
+          <a href="${xUrl}" target="_blank" rel="noopener noreferrer" class="block relative group bg-zinc-950 p-4 text-center">
+            ${posterUrl ? `<img src="${posterUrl}" referrerpolicy="no-referrer" class="max-h-72 mx-auto rounded-lg opacity-60 group-hover:opacity-80 transition object-contain">` : ''}
+            <div class="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-sky-500 text-white text-xs font-bold shadow-lg">
+              <span>▶ 本家𝕏で動画を再生する ↗</span>
+            </div>
+          </a>
+        `;
       }
     };
 
@@ -1727,23 +1763,17 @@
         </div>`;
       }
       if (media.videos && media.videos.length > 0) {
-        html += media.videos.map((v, vIdx) => {
-          const vidContainerId = `vid_box_${contextKey}_${tweetId}_${vIdx}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+        html += media.videos.map((v) => {
+          const backupStr = Array.isArray(v.backupUrls) ? v.backupUrls.join('|') : '';
+          const safePoster = v.thumbnail_url || '';
           return `
-            <div id="${vidContainerId}" class="my-2 rounded-xl overflow-hidden border theme-border bg-black" onclick="event.stopPropagation()">
+            <div class="my-2 rounded-xl overflow-hidden border theme-border bg-black" onclick="event.stopPropagation()">
               <video src="${v.url}"
-                poster="${v.thumbnail_url || ''}"
+                poster="${safePoster}"
+                data-backups="${backupStr}"
                 controls playsinline preload="metadata"
-                onerror="handleDirectVideoError(this, '${v.url}', '${tweetId}', '${vidContainerId}')"
+                onerror="handleSafeVideoFallback(this, '${tweetId}', '${safePoster}')"
                 class="w-full max-h-[420px] mx-auto bg-black block"></video>
-              ${tweetId ? `
-                <div class="px-3 py-1.5 bg-zinc-950 border-t theme-border flex items-center justify-between text-[11px] theme-sub">
-                  <span>🎬 動画プレイヤー</span>
-                  <button onclick="switchToOfficialTwitterPlayer('${vidContainerId}', '${tweetId}', event)" class="text-sky-400 hover:underline font-bold flex items-center gap-1">
-                    <span>▶ 再生できない場合は公式プレイヤーへ切替</span>
-                  </button>
-                </div>
-              ` : ''}
             </div>
           `;
         }).join('');
@@ -2038,13 +2068,10 @@
             let htmlToInsert = '';
 
             if (textData && hasMarkdownSyntax(textData) && window.marked) {
-              // 1. Markdown構文が含まれる場合はMarkdownパーサーを最優先（余計なUIゴミが入らないため最も綺麗）
               htmlToInsert = cleanRichHtml(window.marked.parse(textData));
             } else if (htmlData && htmlData.trim()) {
-              // 2. 画面選択コピーによるリッチHTML（iframeやボタン等のノイズを完全除去して挿入）
               htmlToInsert = cleanRichHtml(htmlData);
             } else if (textData) {
-              // 3. 通常のプレーンテキスト
               htmlToInsert = textData
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
                 .replace(/\r?\n/g, '<br>');
@@ -2161,7 +2188,7 @@
     });
 
     window.insertUrlBlock = async function() {
-      const url = prompt("挿入したいURL（本家XのツイートURL・Webサイト・YouTube・動画mp4・画像URL）を入力してください:");
+      const url = prompt("挿入したいURL（本家XのツイートURL・YouTube・Webサイト・動画mp4・画像URL）を入力してください:");
       if (!url || !url.trim()) return;
       let formatted = url.trim();
       if (!/^https?:\/\//i.test(formatted) && !formatted.startsWith('data:')) {
@@ -2271,8 +2298,14 @@
       closePostModal();
     };
 
+    // ★ メディアURLの描画（404を起こす不完全なiframe生成を完全排除）
     function renderMediaHtml(url, savedSnapshot = null, contextKey = 'media') {
       const safeUrl = (url || '').trim();
+      if (!safeUrl || (!/^https?:\/\//i.test(safeUrl) && !safeUrl.startsWith('data:image/'))) {
+        return '';
+      }
+
+      // 1. 本家X（Twitter）のURL
       const tweetId = extractTweetId(safeUrl);
       if (tweetId) {
         const snap = (savedSnapshot && savedSnapshot.schemaVersion === CURRENT_SCHEMA_VERSION)
@@ -2286,22 +2319,40 @@
         setTimeout(() => window.hydrateTweetCards && window.hydrateTweetCards(), 10);
         return `<div data-tweet-id="${tweetId}" data-tweet-url="${safeUrl}" data-ctx-key="${contextKey}" class="my-2 p-4 rounded-2xl border theme-border theme-card text-xs theme-sub animate-pulse">𝕏 ポスト全文＆動画データを取得中...</div>`;
       }
-      const ytMatch = safeUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]{11})/);
-      if (ytMatch) {
-        return `<div class="aspect-video w-full rounded-xl overflow-hidden my-2 border theme-border">
-          <iframe src="[https://www.youtube.com/embed/$](https://www.youtube.com/embed/$){ytMatch[1]}" class="w-full h-full" allowfullscreen></iframe>
-        </div>`;
+
+      // 2. YouTubeのURL（確実に11文字のIDが検証できた時のみiframeを生成し、下に直リンクも添える）
+      const ytId = extractYouTubeId(safeUrl);
+      if (ytId) {
+        return `
+          <div class="my-2 rounded-2xl overflow-hidden border theme-border bg-black" onclick="event.stopPropagation()">
+            <div class="aspect-video w-full">
+              <iframe src="[https://www.youtube.com/embed/$](https://www.youtube.com/embed/$){ytId}"
+                class="w-full h-full border-0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen loading="lazy"></iframe>
+            </div>
+            <div class="px-3 py-1.5 bg-zinc-950 border-t theme-border flex items-center justify-between text-[11px] theme-sub">
+              <span>▶ YouTube</span>
+              <a href="[https://www.youtube.com/watch?v=$](https://www.youtube.com/watch?v=$){ytId}" target="_blank" rel="noopener noreferrer" class="text-sky-400 hover:underline font-bold">YouTubeで直接開く ↗</a>
+            </div>
+          </div>
+        `;
       }
+
+      // 3. 動画ファイル直リンク
       if (/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(safeUrl)) {
-        const directBoxId = `direct_vid_${contextKey}`.replace(/[^a-zA-Z0-9_-]/g, '_');
-        return `<div id="${directBoxId}" class="my-2 rounded-xl overflow-hidden border theme-border bg-black" onclick="event.stopPropagation()">
+        return `<div class="my-2 rounded-xl overflow-hidden border theme-border bg-black" onclick="event.stopPropagation()">
           <video src="${safeUrl}" controls playsinline preload="metadata"
             class="w-full max-h-96 mx-auto bg-black block"></video>
         </div>`;
       }
+
+      // 4. 画像ファイル直リンク
       if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|avif)(\?.*)?$/i.test(safeUrl) || safeUrl.startsWith('data:image/')) {
         return `<img src="${safeUrl}" referrerpolicy="no-referrer" onclick="event.stopPropagation(); openLightbox('${safeUrl}')" class="max-h-96 rounded-xl object-contain my-2 cursor-zoom-in">`;
       }
+
+      // 5. 一般のWebサイトURL → リンクカード
       let hostname = safeUrl;
       try { hostname = new URL(safeUrl).hostname; } catch (e) {}
       const favicon = `[https://www.google.com/s2/favicons?domain=$](https://www.google.com/s2/favicons?domain=$){encodeURIComponent(hostname)}&sz=64`;
