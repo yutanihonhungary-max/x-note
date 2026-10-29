@@ -19,9 +19,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="X-Note">
   
-  <!-- Tailwind CSS & Lucide Icons -->
+  <!-- Tailwind CSS, Lucide Icons, Marked (Markdown変換), DOMPurify (安全なHTML整形) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.9/dist/purify.min.js"></script>
   
   <style>
     :root {
@@ -33,7 +35,7 @@
       --border-color: #2f3336;
       --accent: #1d9bf0;
       --post-font-size: 15px;
-      --post-line-height: 1.6;
+      --post-line-height: 1.65;
       --post-padding: 16px;
       --right-sidebar-w: 230px;
     }
@@ -57,12 +59,143 @@
       padding: var(--post-padding);
     }
     .post-collapsed {
-      max-height: 155px;
+      max-height: 185px;
       overflow: hidden;
       position: relative;
       mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
       -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
     }
+
+    /* ★ ChatGPT / Gemini のコピペ（見出し・太字・表・リスト・コード）を完全再現するリッチスタイル */
+    .rich-content {
+      font-size: var(--post-font-size);
+      line-height: var(--post-line-height);
+      color: var(--text-main);
+      word-break: break-word;
+    }
+    .rich-content h1 {
+      font-size: 1.45em;
+      font-weight: 800;
+      margin: 0.75em 0 0.4em;
+      line-height: 1.3;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.25em;
+    }
+    .rich-content h2 {
+      font-size: 1.25em;
+      font-weight: 800;
+      margin: 0.7em 0 0.35em;
+      line-height: 1.35;
+    }
+    .rich-content h3 {
+      font-size: 1.1em;
+      font-weight: 700;
+      margin: 0.6em 0 0.25em;
+      line-height: 1.4;
+    }
+    .rich-content h4, .rich-content h5, .rich-content h6 {
+      font-size: 1em;
+      font-weight: 700;
+      margin: 0.5em 0 0.2em;
+    }
+    .rich-content p {
+      margin: 0.45em 0;
+    }
+    .rich-content strong, .rich-content b {
+      font-weight: 800;
+      color: var(--text-main);
+    }
+    .rich-content em, .rich-content i {
+      font-style: italic;
+    }
+    .rich-content ul {
+      list-style-type: disc;
+      padding-left: 1.5em;
+      margin: 0.45em 0;
+    }
+    .rich-content ol {
+      list-style-type: decimal;
+      padding-left: 1.5em;
+      margin: 0.45em 0;
+    }
+    .rich-content li {
+      margin: 0.2em 0;
+    }
+    .rich-content li > p {
+      margin: 0.15em 0;
+    }
+    .rich-content hr {
+      border: 0;
+      border-top: 1px solid var(--border-color);
+      margin: 0.9em 0;
+    }
+    .rich-content blockquote {
+      border-left: 3px solid var(--accent);
+      padding: 0.25em 0.85em;
+      margin: 0.6em 0;
+      background: rgba(128, 128, 128, 0.07);
+      border-radius: 0 8px 8px 0;
+    }
+    .rich-content code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.88em;
+      background: rgba(128, 128, 128, 0.18);
+      padding: 0.15em 0.4em;
+      border-radius: 5px;
+    }
+    .rich-content pre {
+      background: #0d1117;
+      color: #e6edf3;
+      padding: 0.85em 1em;
+      border-radius: 10px;
+      overflow-x: auto;
+      margin: 0.65em 0;
+      border: 1px solid var(--border-color);
+      font-size: 0.88em;
+      line-height: 1.5;
+    }
+    .rich-content pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+      font-size: inherit;
+    }
+    /* 表（テーブル）の完全再現スタイル */
+    .rich-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.75em 0;
+      font-size: 0.92em;
+      display: block;
+      overflow-x: auto;
+    }
+    .rich-content th, .rich-content td {
+      border: 1px solid var(--border-color);
+      padding: 0.5em 0.75em;
+      text-align: left;
+      vertical-align: top;
+    }
+    .rich-content th {
+      background-color: rgba(128, 128, 128, 0.14);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .rich-content tr:nth-child(even) td {
+      background-color: rgba(128, 128, 128, 0.04);
+    }
+    .rich-content a {
+      color: var(--accent);
+      text-decoration: underline;
+    }
+
+    /* リッチエディタ入力欄のプレースホルダー表示 */
+    .rich-editor-box:empty:before {
+      content: attr(data-placeholder);
+      color: #71767b;
+      pointer-events: none;
+      display: block;
+    }
+
     @keyframes highlightPulse {
       0% { background-color: rgba(29, 155, 240, 0.28); }
       100% { background-color: transparent; }
@@ -131,7 +264,7 @@
       <div class="space-y-1">
         <div class="px-3 py-2 text-3xl font-black tracking-tighter flex items-center justify-between">
           <span>𝕏</span>
-          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v3.3</span>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v3.4</span>
         </div>
         <button id="nav-btn-all" onclick="setFilter('all')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 transition">
           <i data-lucide="home" class="w-5 h-5"></i> <span>ホーム</span>
@@ -200,13 +333,11 @@
               <input id="search-input" type="text" placeholder="検索や #タグ..." class="w-full theme-card border theme-border rounded-full pl-9 pr-3 py-1.5 text-xs outline-none">
             </div>
 
-            <!-- 既存のすべてのXツイートを全文＆動画付きで一括再取得して修復するボタン -->
             <button onclick="refreshAllTweetsInApp()" class="px-2.5 py-1.5 rounded-full border theme-border text-xs font-bold theme-sub hover:text-white hover:bg-white/5 transition flex items-center gap-1 shrink-0" title="過去のXツイートリンクの全文・動画データを一括で再取得して修復します">
               <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
               <span class="hidden sm:inline">X再取得</span>
             </button>
 
-            <!-- 複数選択ボタン -->
             <button id="select-mode-btn" onclick="toggleSelectMode()" class="px-2.5 py-1.5 rounded-full border theme-border text-xs font-bold theme-sub hover:text-white hover:bg-white/5 transition flex items-center gap-1 shrink-0" title="複数のポストを選択してまとめてコピー">
               <i data-lucide="check-square" class="w-3.5 h-3.5"></i>
               <span class="hidden sm:inline">複数選択</span>
@@ -275,7 +406,6 @@
           <span id="sidebar-width-label" class="text-[10px] theme-sub shrink-0">230px</span>
         </div>
 
-        <!-- 幅調整スライダー -->
         <div class="flex items-center gap-2 bg-black/30 px-2.5 py-1.5 rounded-xl border theme-border">
           <span class="text-[10px] theme-sub whitespace-nowrap">幅</span>
           <input id="sidebar-width-slider" type="range" min="160" max="420" step="5" value="230"
@@ -284,7 +414,6 @@
             class="w-full h-1 rounded-lg cursor-pointer">
         </div>
 
-        <!-- 新規タブ追加 -->
         <div class="flex gap-1">
           <input id="sidebar-new-category-input" type="text" placeholder="新規タブ名..."
             onkeydown="if(event.key==='Enter') addCategory('sidebar-new-category-input')"
@@ -294,7 +423,6 @@
           </button>
         </div>
 
-        <!-- タブ一覧 -->
         <div id="sidebar-category-manage-list" class="space-y-1 text-xs"></div>
       </div>
     </aside>
@@ -373,7 +501,7 @@
           </button>
         </div>
         <div class="text-[11px] theme-sub">
-          <span id="char-count">0 文字</span> · <span class="hidden sm:inline">Ctrl+V 対応</span>
+          <span id="char-count">0 文字</span> · <span class="hidden sm:inline">ChatGPT/Geminiの書式・表コピペ対応</span>
         </div>
       </div>
     </div>
@@ -520,8 +648,13 @@
       } catch (e) {}
     }
 
+    // Markedの初期設定（改行・GitHub風テーブル有効化）
+    if (window.marked && typeof window.marked.setOptions === 'function') {
+      window.marked.setOptions({ gfm: true, breaks: true });
+    }
+
     // =========================================================================
-    // ★ あなたの firebaseConfig（特殊空白文字を完全除去済み）
+    // ★ あなたの firebaseConfig（組込済み）
     // =========================================================================
     const firebaseConfig = {
       apiKey: "AIzaSyDHY8YRAmdJlGdB24inmnX5wmL4Ikt66bA",
@@ -576,9 +709,8 @@
       rightSidebarWidth: 230
     };
 
-    let editorBlocks = [{ id: crypto.randomUUID(), type: 'text', content: '' }];
+    let editorBlocks = [{ id: crypto.randomUUID(), type: 'text', content: '', html: '' }];
     let activeBlockIndex = 0;
-    let activeCursorPos = 0;
 
     function showToast(msg) {
       const t = document.getElementById('toast');
@@ -589,7 +721,83 @@
     }
 
     // =========================================================================
-    // ★ ログイン処理（ポップアップ ＆ リダイレクト両対応で確実に遷移させる）
+    // ★ ChatGPT / Gemini のHTML＆Markdownを整形・無害化して完全再現するヘルパー
+    // =========================================================================
+    const ALLOWED_RICH_TAGS = [
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      'p', 'br', 'hr',
+      'strong', 'b', 'em', 'i', 'u', 's', 'del', 'mark', 'sub', 'sup',
+      'ul', 'ol', 'li',
+      'table', 'thead', 'tbody', 'tr', 'th', 'td',
+      'blockquote', 'pre', 'code',
+      'a', 'span', 'div'
+    ];
+
+    function cleanRichHtml(rawHtml) {
+      if (!rawHtml) return '';
+      if (window.DOMPurify) {
+        const cleaned = window.DOMPurify.sanitize(rawHtml, {
+          ALLOWED_TAGS: ALLOWED_RICH_TAGS,
+          ALLOWED_ATTR: ['href', 'target', 'rel', 'colspan', 'rowspan']
+        });
+        return cleaned;
+      }
+      return rawHtml;
+    }
+
+    // テキストにMarkdown記法（見出し・太字・表・リスト・コードブロック）が含まれるか判定
+    function hasMarkdownSyntax(text) {
+      if (!text) return false;
+      return /(^|\n)\s*#{1,6}\s+|\*\*[^*]+\*\*|(^|\n)\s*[-*+]\s+|(^|\n)\s*\d+\.\s+|```|\|.+\|\s*\n\s*\|[-:| ]+\|/m.test(text);
+    }
+
+    // タイムライン表示用にブロック内容をHTMLへ変換（HTML保存済み or Markdown自動変換 or 通常テキスト）
+    function renderFormattedBlockContent(block) {
+      const rawHtml = (block.html || '').trim();
+      const rawText = (block.content || '').trim();
+
+      let outputHtml = '';
+
+      if (rawHtml) {
+        // 1. ChatGPTやGeminiからリッチHTMLとしてペーストされたデータがある場合
+        outputHtml = cleanRichHtml(rawHtml);
+      } else if (hasMarkdownSyntax(rawText) && window.marked) {
+        // 2. Markdown形式（コピーボタン経由など）の場合、Markedで見出し・太字・表へ変換
+        outputHtml = cleanRichHtml(window.marked.parse(rawText));
+      } else {
+        // 3. 通常のプレーンテキスト
+        const escaped = (block.content || '')
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="theme-accent-text hover:underline break-all">$1</a>')
+          .replace(/(^|\s)(#[^\s#<]+)/g, '$1<span onclick="event.stopPropagation(); filterByTag(\'$2\')" class="theme-accent-text hover:underline cursor-pointer">$2</span>');
+        return `<div class="whitespace-pre-wrap post-text my-1">${escaped}</div>`;
+      }
+
+      // リッチHTML内のリンクを安全に別タブで開くようにし、ハッシュタグもクリック可能にする
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = outputHtml;
+      wrapper.querySelectorAll('a').forEach(a => {
+        a.setAttribute('target', '_blank');
+        a.setAttribute('rel', 'noopener noreferrer');
+        a.setAttribute('onclick', 'event.stopPropagation()');
+      });
+
+      return `<div class="rich-content my-1">${wrapper.innerHTML}</div>`;
+    }
+
+    // HTML文字列からプレーンテキストを抽出（検索・文字数カウント・一括コピー用）
+    function htmlToPlainText(htmlStr) {
+      if (!htmlStr) return '';
+      const temp = document.createElement('div');
+      temp.innerHTML = htmlStr
+        .replace(/<\/(p|div|h[1-6]|li|tr|blockquote|pre)>/gi, '$&\n')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/(td|th)>/gi, '$&\t');
+      return (temp.textContent || temp.innerText || '').replace(/\n{3,}/g, '\n\n').trim();
+    }
+
+    // =========================================================================
+    // ログイン処理
     // =========================================================================
     getRedirectResult(auth).catch((err) => {
       const errEl = document.getElementById('auth-error');
@@ -607,7 +815,6 @@
       try {
         await signInWithPopup(auth, provider);
       } catch (err) {
-        console.warn("Popup failed, fallback available:", err);
         if (err.code === 'auth/popup-blocked' || err.code === 'auth/operation-not-supported-in-this-environment') {
           statusEl.textContent = "リダイレクト認証へ切り替えています...";
           await signInWithRedirect(auth, provider);
@@ -649,7 +856,6 @@
         return;
       }
 
-      // ★ ログイン成功時は即座にロック画面を消してメイン画面へ遷移
       loginScreen.classList.add('hidden');
       appScreen.classList.remove('hidden');
       document.getElementById('user-email').textContent = user.email || '';
@@ -841,8 +1047,12 @@
       });
       parts.push(`[${dateStr}]${post.category ? ` [${post.category}]` : ''}${post.title ? ` ${post.title}` : ''}`);
       (post.blocks || []).forEach(b => {
-        if (b.type === 'text' && b.content) parts.push(b.content);
-        else if (b.type === 'embed' && b.url) parts.push(b.url);
+        if (b.type === 'text') {
+          const txt = b.content || htmlToPlainText(b.html || '');
+          if (txt) parts.push(txt);
+        } else if (b.type === 'embed' && b.url) {
+          parts.push(b.url);
+        }
       });
       if (post.quotedExternalUrl) parts.push(`引用: ${post.quotedExternalUrl}`);
       return parts.join('\n');
@@ -1119,7 +1329,7 @@
       quotedPostId = quoteId;
       quotedExternalUrl = null;
       document.getElementById('post-title').value = '';
-      editorBlocks = [{ id: crypto.randomUUID(), type: 'text', content: '' }];
+      editorBlocks = [{ id: crypto.randomUUID(), type: 'text', content: '', html: '' }];
       activeBlockIndex = 0;
 
       const replyInfo = document.getElementById('reply-parent-info');
@@ -1340,7 +1550,7 @@
       const screenName = t.author?.screen_name || t.user_screen_name || 'user';
       return {
         id: rawId,
-        url: t.url || t.tweetURL || `https://x.com/${screenName}/status/${rawId}`,
+        url: t.url || t.tweetURL || `[https://x.com/$](https://x.com/$){screenName}/status/${rawId}`,
         text: extractFullTweetText(t),
         created_timestamp: t.created_timestamp || t.date_epoch || null,
         author: {
@@ -1365,7 +1575,7 @@
       let vxSnap = null;
 
       try {
-        const res = await fetch(`https://api.fxtwitter.com/status/${tweetId}`);
+        const res = await fetch(`[https://api.fxtwitter.com/status/$](https://api.fxtwitter.com/status/$){tweetId}`);
         if (res.ok) {
           const data = await res.json();
           if (data && data.tweet) fxSnap = sanitizeTweetSnapshot(data.tweet);
@@ -1373,7 +1583,7 @@
       } catch (e) {}
 
       try {
-        const res2 = await fetch(`https://api.vxtwitter.com/Twitter/status/${tweetId}`);
+        const res2 = await fetch(`[https://api.vxtwitter.com/Twitter/status/$](https://api.vxtwitter.com/Twitter/status/$){tweetId}`);
         if (res2.ok) {
           const data2 = await res2.json();
           if (data2 && (data2.tweetID || data2.text)) vxSnap = sanitizeTweetSnapshot(data2);
@@ -1439,8 +1649,9 @@
           if (b.type === 'embed' && b.url) {
             const tid = extractTweetId(b.url);
             if (tid) allTweetIds.add(tid);
-          } else if (b.type === 'text' && b.content) {
-            const matches = [...b.content.matchAll(/https?:\/\/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)/gi)];
+          } else if (b.type === 'text') {
+            const raw = (b.content || '') + ' ' + (b.html || '');
+            const matches = [...raw.matchAll(/https?:\/\/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)/gi)];
             matches.forEach(m => allTweetIds.add(m[1]));
           }
         });
@@ -1464,7 +1675,7 @@
       if (!container || !tweetId) return;
       container.innerHTML = `
         <div class="w-full rounded-xl overflow-hidden my-1 border theme-border bg-black">
-          <iframe src="https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&theme=dark&dnt=true"
+          <iframe src="[https://platform.twitter.com/embed/Tweet.html?id=$](https://platform.twitter.com/embed/Tweet.html?id=$){tweetId}&theme=dark&dnt=true"
             class="w-full min-h-[420px] border-0"
             allow="autoplay; fullscreen; picture-in-picture"
             allowfullscreen loading="lazy"></iframe>
@@ -1476,13 +1687,13 @@
       const step = Number(videoEl.getAttribute('data-retry-step') || '0');
       if (step === 0 && tweetId) {
         videoEl.setAttribute('data-retry-step', '1');
-        videoEl.src = `https://d.fxtwitter.com/i/status/${tweetId}.mp4`;
+        videoEl.src = `[https://d.fxtwitter.com/i/status/$](https://d.fxtwitter.com/i/status/$){tweetId}.mp4`;
         videoEl.load();
         return;
       }
       if (step === 1 && tweetId) {
         videoEl.setAttribute('data-retry-step', '2');
-        videoEl.src = `https://d.vxtwitter.com/i/status/${tweetId}.mp4`;
+        videoEl.src = `[https://d.vxtwitter.com/i/status/$](https://d.vxtwitter.com/i/status/$){tweetId}.mp4`;
         videoEl.load();
         return;
       }
@@ -1569,7 +1780,7 @@
               <button onclick="forceRefreshSingleTweet('${t.id}', event)" class="text-[10px] px-2 py-0.5 rounded-full bg-white/5 hover:bg-white/10 theme-sub hover:text-white border theme-border transition" title="このツイートの全文・動画データを再取得して更新">
                 🔄 再取得
               </button>
-              <a href="${t.url || `https://x.com/i/status/${t.id}`}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="text-[11px] theme-sub hover:text-white px-2 py-0.5 rounded-full border theme-border" title="本家Xで開く">𝕏 ↗</a>
+              <a href="${t.url || `[https://x.com/i/status/$](https://x.com/i/status/$){t.id}`}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="text-[11px] theme-sub hover:text-white px-2 py-0.5 rounded-full border theme-border" title="本家Xで開く">𝕏 ↗</a>
             </div>
           </div>
 
@@ -1595,18 +1806,20 @@
         year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
       });
 
-      const textSnippet = (qPost.blocks || [])
+      const textBlocksHtml = (qPost.blocks || [])
         .filter(b => b.type === 'text')
-        .map(b => b.content || '')
+        .map(b => renderFormattedBlockContent(b))
+        .join('');
+
+      const plainText = (qPost.blocks || [])
+        .filter(b => b.type === 'text')
+        .map(b => b.content || htmlToPlainText(b.html || ''))
         .join('\n');
 
       const cardKey = `internal_quote_${qPost.id}`;
-      const isLong = textSnippet.length > 140 || textSnippet.split('\n').length >= 5;
+      const isLong = plainText.length > 140 || plainText.split('\n').length >= 5;
       const isExpanded = expandedTweetCardIds.has(cardKey);
       const shouldCollapse = isLong && !isExpanded;
-
-      const escaped = textSnippet
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
       const firstImage = (qPost.blocks || []).find(b => b.type === 'image');
 
@@ -1622,7 +1835,7 @@
             </div>
           </div>
           ${qPost.title ? `<div class="font-bold text-sm mb-1">${qPost.title}</div>` : ''}
-          <div class="whitespace-pre-wrap text-sm leading-relaxed ${shouldCollapse ? 'post-collapsed' : ''}">${escaped}</div>
+          <div class="${shouldCollapse ? 'post-collapsed' : ''}">${textBlocksHtml}</div>
           ${isLong ? `
             <button onclick="toggleExpandTweetCard('${cardKey}', event)" class="mt-1 text-xs font-bold theme-accent-text hover:underline block">
               ${shouldCollapse ? 'さらに表示' : '折りたたむ'}
@@ -1687,7 +1900,7 @@
         return;
       }
 
-      if (editorBlocks.length === 1 && editorBlocks[0].type === 'text' && !editorBlocks[0].content.trim()) {
+      if (editorBlocks.length === 1 && editorBlocks[0].type === 'text' && !editorBlocks[0].content.trim() && !editorBlocks[0].html) {
         editorBlocks = [{
           id: crypto.randomUUID(),
           type: 'embed',
@@ -1705,10 +1918,17 @@
         });
       }
 
-      editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: '' });
+      editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: '', html: '' });
       activeBlockIndex = editorBlocks.length - 1;
       renderEditor();
       hydrateTweetCards();
+    };
+
+    // =========================================================================
+    // ★ リッチテキスト対応エディタ（ChatGPT / Gemini の書式＆表そのままコピペ対応）
+    // =========================================================================
+    window.execRichCmd = function(cmd, val = null) {
+      document.execCommand(cmd, false, val);
     };
 
     window.renderEditor = function() {
@@ -1721,9 +1941,20 @@
         wrapper.className = "bg-black/30 border theme-border rounded-xl p-2.5";
 
         const controls = `
-          <div class="flex items-center justify-between text-[11px] theme-sub mb-1">
-            <span>${block.type === 'text' ? 'テキスト段落' : block.type === 'image' ? '写真' : '動画 / Webリンク / 𝕏ポスト'}</span>
-            <div class="flex items-center gap-1">
+          <div class="flex items-center justify-between text-[11px] theme-sub mb-1.5 pb-1 border-b border-white/5">
+            <div class="flex items-center gap-1 flex-wrap">
+              <span>${block.type === 'text' ? '📝 リッチテキスト段落' : block.type === 'image' ? '🖼️ 写真' : '🎬 動画 / Webリンク / 𝕏ポスト'}</span>
+              ${block.type === 'text' ? `
+                <div class="flex items-center gap-0.5 ml-2 bg-white/5 rounded-lg px-1 py-0.5">
+                  <button type="button" onmousedown="event.preventDefault(); execRichCmd('bold')" class="px-1.5 py-0.5 hover:bg-white/10 rounded font-extrabold text-white" title="太字">B</button>
+                  <button type="button" onmousedown="event.preventDefault(); execRichCmd('formatBlock', 'H2')" class="px-1.5 py-0.5 hover:bg-white/10 rounded font-bold text-white" title="大見出し">H2</button>
+                  <button type="button" onmousedown="event.preventDefault(); execRichCmd('formatBlock', 'H3')" class="px-1.5 py-0.5 hover:bg-white/10 rounded font-bold text-white" title="中見出し">H3</button>
+                  <button type="button" onmousedown="event.preventDefault(); execRichCmd(' formatBlock', 'P')" class="px-1.5 py-0.5 hover:bg-white/10 rounded text-gray-300" title="標準文字">標準</button>
+                  <button type="button" onmousedown="event.preventDefault(); execRichCmd('insertUnorderedList')" class="px-1.5 py-0.5 hover:bg-white/10 rounded text-gray-300" title="箇条書き">• リスト</button>
+                </div>
+              ` : ''}
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
               <button onclick="moveBlock(${idx}, -1)" class="px-1.5 py-0.5 hover:bg-white/10 rounded">↑</button>
               <button onclick="moveBlock(${idx}, 1)" class="px-1.5 py-0.5 hover:bg-white/10 rounded">↓</button>
               <button onclick="removeBlock(${idx})" class="px-1.5 py-0.5 text-red-400 hover:bg-red-500/10 rounded">削除</button>
@@ -1733,25 +1964,86 @@
 
         if (block.type === 'text') {
           wrapper.innerHTML = controls;
-          const ta = document.createElement('textarea');
-          ta.className = "w-full bg-transparent outline-none text-sm leading-relaxed resize-none min-h-[85px]";
-          ta.placeholder = "いまどうしてる？（Xのリンクを貼ると全文＆動画ごとアプリに永続保存されます / Ctrl+V スクショ対応）";
-          ta.value = block.content;
-          ta.addEventListener('input', (e) => {
-            editorBlocks[idx].content = e.target.value;
+          const richDiv = document.createElement('div');
+          richDiv.contentEditable = "true";
+          richDiv.className = "rich-editor-box rich-content w-full bg-transparent outline-none min-h-[95px] py-1";
+          richDiv.setAttribute('data-placeholder', 'いまどうしてる？（ChatGPTやGeminiの回答を貼り付けると、文字サイズ・太字・表までそのまま再現されます）');
+
+          if (block.html && block.html.trim()) {
+            richDiv.innerHTML = block.html;
+          } else if (block.content) {
+            if (hasMarkdownSyntax(block.content) && window.marked) {
+              const parsed = cleanRichHtml(window.marked.parse(block.content));
+              richDiv.innerHTML = parsed;
+              editorBlocks[idx].html = parsed;
+            } else {
+              richDiv.innerText = block.content;
+            }
+          }
+
+          richDiv.addEventListener('focus', () => { activeBlockIndex = idx; });
+          richDiv.addEventListener('click', () => { activeBlockIndex = idx; });
+          richDiv.addEventListener('keyup', () => { activeBlockIndex = idx; });
+
+          richDiv.addEventListener('input', () => {
             activeBlockIndex = idx;
-            activeCursorPos = e.target.selectionStart || e.target.value.length;
+            editorBlocks[idx].html = cleanRichHtml(richDiv.innerHTML);
+            editorBlocks[idx].content = htmlToPlainText(richDiv.innerHTML);
             updateCharCount();
           });
-          ta.addEventListener('click', (e) => {
+
+          // ★ ペースト処理：ChatGPT/GeminiのリッチHTML または Markdownテキストを自動判別して見出し・太字・表をそのまま挿入
+          richDiv.addEventListener('paste', async (e) => {
             activeBlockIndex = idx;
-            activeCursorPos = e.target.selectionStart || 0;
+            const clip = e.clipboardData;
+            if (!clip) return;
+
+            // 1. クリップボードに画像（スクショ）がある場合は画像ブロックとして挿入
+            const items = Array.from(clip.items || []);
+            const imageItems = items.filter(item => item.type.startsWith('image/'));
+            if (imageItems.length > 0) {
+              e.preventDefault();
+              e.stopPropagation();
+              for (const item of imageItems) {
+                const file = item.getAsFile();
+                if (file) {
+                  const dataUrl = await compressImage(file);
+                  insertBlockAtCursor({ id: crypto.randomUUID(), type: 'image', url: dataUrl, caption: '' });
+                }
+              }
+              return;
+            }
+
+            const htmlData = clip.getData('text/html');
+            const textData = clip.getData('text/plain');
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            let htmlToInsert = '';
+
+            if (htmlData && htmlData.trim()) {
+              // 2. ChatGPTやGeminiの画面を直接選択コピーした場合（リッチHTMLとして取得）
+              htmlToInsert = cleanRichHtml(htmlData);
+            } else if (textData && hasMarkdownSyntax(textData) && window.marked) {
+              // 3. ChatGPTやGeminiの「コピーボタン」でMarkdownとしてコピーした場合 → 見出し・太字・表のHTMLへ即座に変換
+              htmlToInsert = cleanRichHtml(window.marked.parse(textData));
+            } else if (textData) {
+              // 4. プレーンテキスト
+              htmlToInsert = textData
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/\r?\n/g, '<br>');
+            }
+
+            if (htmlToInsert) {
+              document.execCommand('insertHTML', false, htmlToInsert);
+              editorBlocks[idx].html = cleanRichHtml(richDiv.innerHTML);
+              editorBlocks[idx].content = htmlToPlainText(richDiv.innerHTML);
+              updateCharCount();
+            }
           });
-          ta.addEventListener('keyup', (e) => {
-            activeBlockIndex = idx;
-            activeCursorPos = e.target.selectionStart || 0;
-          });
-          wrapper.appendChild(ta);
+
+          wrapper.appendChild(richDiv);
         } else if (block.type === 'image') {
           wrapper.innerHTML = controls + `
             <img src="${block.url}" class="max-h-64 rounded-lg object-contain mx-auto my-1">
@@ -1777,7 +2069,10 @@
     function updateCharCount() {
       const total = editorBlocks
         .filter(b => b.type === 'text')
-        .reduce((sum, b) => sum + (b.content ? b.content.length : 0), 0);
+        .reduce((sum, b) => {
+          const txt = b.content || htmlToPlainText(b.html || '');
+          return sum + txt.length;
+        }, 0);
       const el = document.getElementById('char-count');
       if (el) el.textContent = `${total.toLocaleString()} 文字`;
     }
@@ -1785,18 +2080,18 @@
     function insertBlockAtCursor(mediaBlock) {
       const target = editorBlocks[activeBlockIndex];
       if (target && target.type === 'text') {
-        const text = target.content || '';
-        const before = text.slice(0, activeCursorPos);
-        const after = text.slice(activeCursorPos);
-        const newBlocks = [];
-        if (before.length > 0) newBlocks.push({ id: crypto.randomUUID(), type: 'text', content: before });
-        newBlocks.push(mediaBlock);
-        newBlocks.push({ id: crypto.randomUUID(), type: 'text', content: after });
-        editorBlocks.splice(activeBlockIndex, 1, ...newBlocks);
-        activeBlockIndex = Math.min(activeBlockIndex + 2, editorBlocks.length - 1);
+        const hasContent = (target.content && target.content.trim().length > 0) || (target.html && target.html.trim().length > 0);
+        if (!hasContent) {
+          editorBlocks.splice(activeBlockIndex, 1, mediaBlock, { id: crypto.randomUUID(), type: 'text', content: '', html: '' });
+          activeBlockIndex = Math.min(activeBlockIndex + 1, editorBlocks.length - 1);
+        } else {
+          editorBlocks.splice(activeBlockIndex + 1, 0, mediaBlock, { id: crypto.randomUUID(), type: 'text', content: '', html: '' });
+          activeBlockIndex = Math.min(activeBlockIndex + 2, editorBlocks.length - 1);
+        }
       } else {
         editorBlocks.push(mediaBlock);
-        editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: '' });
+        editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: '', html: '' });
+        activeBlockIndex = editorBlocks.length - 1;
       }
       renderEditor();
     }
@@ -1832,9 +2127,11 @@
       e.target.value = '';
     });
 
+    // エディタ欄外にフォーカスがある時のCtrl+V画像貼り付けフォールバック
     window.addEventListener('paste', async (e) => {
       const modalOpen = !document.getElementById('post-modal').classList.contains('hidden');
       if (!modalOpen) return;
+      if (e.target && e.target.isContentEditable) return;
       const items = Array.from(e.clipboardData?.items || []);
       const imageItems = items.filter(item => item.type.startsWith('image/'));
       if (imageItems.length === 0) return;
@@ -1865,7 +2162,7 @@
     };
 
     window.addTextBlock = function() {
-      editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: '' });
+      editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: '', html: '' });
       activeBlockIndex = editorBlocks.length - 1;
       renderEditor();
     };
@@ -1879,7 +2176,7 @@
 
     window.removeBlock = function(idx) {
       editorBlocks.splice(idx, 1);
-      if (editorBlocks.length === 0) editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: '' });
+      if (editorBlocks.length === 0) editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: '', html: '' });
       renderEditor();
     };
 
@@ -1891,7 +2188,12 @@
       if (!currentUser) return;
       const title = document.getElementById('post-title').value.trim();
       const category = document.getElementById('post-category').value || 'メモ';
-      const cleanedBlocks = editorBlocks.filter(b => b.type !== 'text' || (b.content && b.content.trim().length > 0));
+      const cleanedBlocks = editorBlocks.filter(b => {
+        if (b.type !== 'text') return true;
+        const plain = (b.content || htmlToPlainText(b.html || '')).trim();
+        const hasTable = (b.html || '').includes('<table');
+        return plain.length > 0 || hasTable;
+      });
       if (!title && cleanedBlocks.length === 0 && !quotedPostId && !quotedExternalUrl) return;
 
       const embeddedSnapshots = {};
@@ -1905,8 +2207,9 @@
               embeddedSnapshots[tid] = snap;
             }
           }
-        } else if (b.type === 'text' && b.content) {
-          const matches = [...b.content.matchAll(/https?:\/\/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)/gi)];
+        } else if (b.type === 'text') {
+          const raw = (b.content || '') + ' ' + (b.html || '');
+          const matches = [...raw.matchAll(/https?:\/\/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)/gi)];
           for (const m of matches) {
             const tid = m[1];
             const snap = await fetchTweetData(tid);
@@ -1967,7 +2270,7 @@
       const ytMatch = safeUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]{11})/);
       if (ytMatch) {
         return `<div class="aspect-video w-full rounded-xl overflow-hidden my-2 border theme-border">
-          <iframe src="https://www.youtube.com/embed/${ytMatch[1]}" class="w-full h-full" allowfullscreen></iframe>
+          <iframe src="[https://www.youtube.com/embed/$](https://www.youtube.com/embed/$){ytMatch[1]}" class="w-full h-full" allowfullscreen></iframe>
         </div>`;
       }
       if (/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(safeUrl)) {
@@ -1982,7 +2285,7 @@
       }
       let hostname = safeUrl;
       try { hostname = new URL(safeUrl).hostname; } catch (e) {}
-      const favicon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=64`;
+      const favicon = `[https://www.google.com/s2/favicons?domain=$](https://www.google.com/s2/favicons?domain=$){encodeURIComponent(hostname)}&sz=64`;
       return `
         <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="block my-2 p-3.5 rounded-2xl border theme-border theme-card hover:bg-white/[0.04] transition group">
           <div class="flex items-center gap-3">
@@ -2016,8 +2319,12 @@
       const parts = [];
       if (post.title) parts.push(post.title);
       (post.blocks || []).forEach(b => {
-        if (b.type === 'text' && b.content) parts.push(b.content);
-        else if (b.type === 'embed' && b.url) parts.push(b.url);
+        if (b.type === 'text') {
+          const txt = b.content || htmlToPlainText(b.html || '');
+          if (txt) parts.push(txt);
+        } else if (b.type === 'embed' && b.url) {
+          parts.push(b.url);
+        }
       });
       if (post.quotedExternalUrl) parts.push(post.quotedExternalUrl);
       const textToCopy = parts.join('\n\n');
@@ -2056,30 +2363,31 @@
       let hasLongTextInPost = false;
       const blocksHtml = (post.blocks || []).map((b, bIdx) => {
         if (b.type === 'text') {
-          const rawContent = b.content || '';
-          const isThisBlockLong = rawContent.length > 160 || rawContent.split('\n').length >= 5;
+          const rawPlain = b.content || htmlToPlainText(b.html || '');
+          const isThisBlockLong = rawPlain.length > 220 || rawPlain.split('\n').length >= 7;
           if (isThisBlockLong) hasLongTextInPost = true;
           const collapseThisText = isThisBlockLong && !isPostExpanded;
 
-          const inlineTweetMatches = [...rawContent.matchAll(/https?:\/\/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)[^\s<]*/gi)];
+          const inlineSource = (b.content || '') + ' ' + (b.html || '');
+          const inlineTweetMatches = [...inlineSource.matchAll(/https?:\/\/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)[^\s<"']*/gi)];
+          const seenTids = new Set();
           const inlineTweetCards = inlineTweetMatches.map((m, mIdx) => {
             const tid = m[1];
+            if (seenTids.has(tid)) return '';
+            seenTids.add(tid);
             const savedSnap = post.tweetSnapshots?.[tid] || tweetCache[tid] || null;
             return renderMediaHtml(m[0], savedSnap, `post_${post.id}_in_${bIdx}_${mIdx}`);
           }).join('');
 
-          const escaped = rawContent
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-            .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="theme-accent-text hover:underline break-all">$1</a>')
-            .replace(/(^|\s)(#[^\s#<]+)/g, '$1<span onclick="event.stopPropagation(); filterByTag(\'$2\')" class="theme-accent-text hover:underline cursor-pointer">$2</span>');
+          const formattedHtml = renderFormattedBlockContent(b);
 
           return `
             <div class="${collapseThisText ? 'post-collapsed' : ''}">
-              <p class="whitespace-pre-wrap post-text my-1">${escaped}</p>
+              ${formattedHtml}
             </div>
             ${collapseThisText ? `
               <button onclick="toggleExpandPost('${post.id}', event)" class="mt-1 mb-1 text-xs font-bold theme-accent-text hover:underline block">
-                さらに表示（全文 ${rawContent.length}文字）
+                さらに表示（全文 ${rawPlain.length}文字）
               </button>
             ` : ''}
             ${inlineTweetCards}
@@ -2257,7 +2565,7 @@
         if (currentFilter === 'bookmark' && !threadPosts.some(tp => tp.bookmarked)) return false;
         if (currentFilter === 'media' && !threadPosts.some(tp => (tp.blocks || []).some(b => b.type !== 'text'))) return false;
         if (query) {
-          const allText = threadPosts.map(tp => (tp.title || '') + ' ' + (tp.blocks || []).map(b => b.content || b.caption || '').join(' ')).join(' ').toLowerCase();
+          const allText = threadPosts.map(tp => (tp.title || '') + ' ' + (tp.blocks || []).map(b => b.content || htmlToPlainText(b.html || '') || b.caption || '').join(' ')).join(' ').toLowerCase();
           return allText.includes(query);
         }
         return true;
@@ -2309,7 +2617,7 @@
       quotedExternalUrl = post.quotedExternalUrl || null;
       document.getElementById('post-title').value = post.title || '';
       if (post.category) document.getElementById('post-category').value = post.category;
-      editorBlocks = JSON.parse(JSON.stringify(post.blocks || [{ id: crypto.randomUUID(), type: 'text', content: '' }]));
+      editorBlocks = JSON.parse(JSON.stringify(post.blocks || [{ id: crypto.randomUUID(), type: 'text', content: '', html: '' }]));
       document.getElementById('modal-mode-label').textContent = 'ポストを編集';
       document.getElementById('submit-btn').textContent = '更新する';
       document.getElementById('reply-parent-info').classList.add('hidden');
