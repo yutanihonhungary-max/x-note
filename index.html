@@ -3,9 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
   <title>𝕏 - Personal Note</title>
   
   <!-- X風のファビコン -->
@@ -19,11 +16,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="X-Note">
   
-  <!-- Tailwind CSS, Lucide Icons, Marked, DOMPurify -->
+  <!-- Tailwind CSS, Lucide Icons, Marked (Markdown表・見出し変換用) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.9/dist/purify.min.js"></script>
   
   <style>
     :root {
@@ -58,165 +54,52 @@
     .post-card-pad {
       padding: var(--post-padding);
     }
+    /* 長文折りたたみ用のマスク処理 */
     .post-collapsed {
-      max-height: 185px;
+      max-height: 180px;
       overflow: hidden;
       position: relative;
-      mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
-      -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+      mask-image: linear-gradient(to bottom, black 65%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, black 65%, transparent 100%);
     }
 
-    /* ChatGPT / Gemini のコピペ（見出し・太字・表・リスト・コード）再現スタイル */
-    .rich-content {
+    /* ChatGPT / Gemini のMarkdown（見出し・太字・表・リスト）表示用スタイル */
+    .md-content {
       font-size: var(--post-font-size);
       line-height: var(--post-line-height);
       color: var(--text-main);
       word-break: break-word;
     }
-    .rich-content iframe, .rich-content object, .rich-content embed, .rich-content frame {
-      display: none !important;
-    }
-    .rich-content h1 {
-      font-size: 1.45em;
-      font-weight: 800;
-      margin: 0.75em 0 0.4em;
-      line-height: 1.3;
-      border-bottom: 1px solid var(--border-color);
-      padding-bottom: 0.25em;
-    }
-    .rich-content h2 {
-      font-size: 1.25em;
-      font-weight: 800;
-      margin: 0.7em 0 0.35em;
-      line-height: 1.35;
-    }
-    .rich-content h3 {
-      font-size: 1.1em;
-      font-weight: 700;
-      margin: 0.6em 0 0.25em;
-      line-height: 1.4;
-    }
-    .rich-content h4, .rich-content h5, .rich-content h6 {
-      font-size: 1em;
-      font-weight: 700;
-      margin: 0.5em 0 0.2em;
-    }
-    .rich-content p {
-      margin: 0.45em 0;
-    }
-    .rich-content strong, .rich-content b {
-      font-weight: 800;
-      color: var(--text-main);
-    }
-    .rich-content em, .rich-content i {
-      font-style: italic;
-    }
-    .rich-content ul {
-      list-style-type: disc;
-      padding-left: 1.5em;
-      margin: 0.45em 0;
-    }
-    .rich-content ol {
-      list-style-type: decimal;
-      padding-left: 1.5em;
-      margin: 0.45em 0;
-    }
-    .rich-content li {
-      margin: 0.2em 0;
-    }
-    .rich-content li > p {
-      margin: 0.15em 0;
-    }
-    .rich-content hr {
-      border: 0;
-      border-top: 1px solid var(--border-color);
-      margin: 0.9em 0;
-    }
-    .rich-content blockquote {
-      border-left: 3px solid var(--accent);
-      padding: 0.25em 0.85em;
-      margin: 0.6em 0;
-      background: rgba(128, 128, 128, 0.07);
-      border-radius: 0 8px 8px 0;
-    }
-    .rich-content code {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 0.88em;
-      background: rgba(128, 128, 128, 0.18);
-      padding: 0.15em 0.4em;
-      border-radius: 5px;
-    }
-    .rich-content pre {
-      background: #0d1117;
-      color: #e6edf3;
-      padding: 0.85em 1em;
-      border-radius: 10px;
-      overflow-x: auto;
-      margin: 0.65em 0;
-      border: 1px solid var(--border-color);
-      font-size: 0.88em;
-      line-height: 1.5;
-    }
-    .rich-content pre code {
-      background: transparent;
-      padding: 0;
-      color: inherit;
-      font-size: inherit;
-    }
-    .rich-content table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 0.75em 0;
-      font-size: 0.92em;
-      display: block;
-      overflow-x: auto;
-    }
-    .rich-content th, .rich-content td {
-      border: 1px solid var(--border-color);
-      padding: 0.5em 0.75em;
-      text-align: left;
-      vertical-align: top;
-    }
-    .rich-content th {
-      background-color: rgba(128, 128, 128, 0.14);
-      font-weight: 800;
-      white-space: nowrap;
-    }
-    .rich-content tr:nth-child(even) td {
-      background-color: rgba(128, 128, 128, 0.04);
-    }
-    .rich-content a {
-      color: var(--accent);
-      text-decoration: underline;
-    }
-
-    .rich-editor-box:empty:before {
-      content: attr(data-placeholder);
-      color: #71767b;
-      pointer-events: none;
-      display: block;
-    }
+    .md-content h1 { font-size: 1.4em; font-weight: 800; margin: 0.6em 0 0.3em; border-bottom: 1px solid var(--border-color); padding-bottom: 0.2em; }
+    .md-content h2 { font-size: 1.25em; font-weight: 800; margin: 0.6em 0 0.3em; }
+    .md-content h3 { font-size: 1.1em; font-weight: 700; margin: 0.5em 0 0.2em; }
+    .md-content p { margin: 0.4em 0; }
+    .md-content strong { font-weight: 800; }
+    .md-content ul { list-style-type: disc; padding-left: 1.5em; margin: 0.4em 0; }
+    .md-content ol { list-style-type: decimal; padding-left: 1.5em; margin: 0.4em 0; }
+    .md-content li { margin: 0.15em 0; }
+    .md-content pre { background: #0d1117; color: #e6edf3; padding: 0.8em; border-radius: 8px; overflow-x: auto; margin: 0.5em 0; border: 1px solid var(--border-color); font-size: 0.88em; }
+    .md-content code { font-family: monospace; background: rgba(128,128,128,0.2); padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.9em; }
+    .md-content pre code { background: transparent; padding: 0; }
+    .md-content table { width: 100%; border-collapse: collapse; margin: 0.6em 0; font-size: 0.92em; display: block; overflow-x: auto; }
+    .md-content th, .md-content td { border: 1px solid var(--border-color); padding: 0.45em 0.7em; text-align: left; }
+    .md-content th { background: rgba(128,128,128,0.15); font-weight: 800; }
+    .md-content blockquote { border-left: 3px solid var(--accent); padding-left: 0.8em; margin: 0.5em 0; color: var(--text-sub); }
+    .md-content a { color: var(--accent); text-decoration: underline; }
 
     @keyframes highlightPulse {
       0% { background-color: rgba(29, 155, 240, 0.28); }
       100% { background-color: transparent; }
     }
-    .highlight-jump {
-      animation: highlightPulse 2s ease-out;
-    }
-    .dragging-item {
-      opacity: 0.45;
-      border-color: var(--accent) !important;
-    }
+    .highlight-jump { animation: highlightPulse 2s ease-out; }
+    .dragging-item { opacity: 0.45; border-color: var(--accent) !important; }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     textarea { field-sizing: content; }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #2f3336; border-radius: 3px; }
-    input[type="range"] {
-      accent-color: var(--accent);
-    }
+    input[type="range"] { accent-color: var(--accent); }
   </style>
 </head>
 <body class="min-h-screen selection:bg-sky-500 selection:text-white">
@@ -245,15 +128,13 @@
       <div class="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-4 text-white font-black text-4xl">
         𝕏
       </div>
-      <h1 class="text-xl font-bold text-white mb-1">X-Note Personal</h1>
-      <p id="login-status-text" class="text-xs text-gray-400 mb-6">認証状態を確認中...</p>
+      <h1 class="text-xl font-bold text-white mb-2">X-Note Personal</h1>
+      <p class="text-xs text-gray-400 mb-6">自分専用の長文・スレッド・引用・メディア同期ノート</p>
       <button id="login-btn" class="w-full py-3 px-4 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition flex items-center justify-center gap-2">
-        <span>Googleでログイン（ポップアップ）</span>
+        <i data-lucide="log-in" class="w-4 h-4"></i>
+        Googleでログイン
       </button>
-      <button id="login-redirect-btn" class="w-full mt-2.5 py-2.5 px-4 bg-white/10 text-gray-200 font-bold text-xs rounded-full hover:bg-white/15 transition">
-        画面が切り替わらない場合はこちら（リダイレクト認証）
-      </button>
-      <p id="auth-error" class="text-xs text-red-400 mt-4 hidden break-all"></p>
+      <p id="auth-error" class="text-xs text-red-400 mt-4 hidden"></p>
     </div>
   </div>
 
@@ -263,9 +144,8 @@
     <!-- 左サイドバー（PC用） -->
     <aside class="hidden md:flex flex-col w-60 border-r theme-border p-4 sticky top-0 h-screen justify-between shrink-0">
       <div class="space-y-1">
-        <div class="px-3 py-2 text-3xl font-black tracking-tighter flex items-center justify-between">
+        <div class="px-3 py-2 text-3xl font-black tracking-tighter flex items-center gap-2">
           <span>𝕏</span>
-          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v3.6</span>
         </div>
         <button id="nav-btn-all" onclick="setFilter('all')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 transition">
           <i data-lucide="home" class="w-5 h-5"></i> <span>ホーム</span>
@@ -328,18 +208,12 @@
             </div>
           </div>
 
-          <div class="flex items-center gap-1.5 flex-1 justify-end max-w-md">
+          <div class="flex items-center gap-2 flex-1 justify-end max-w-sm">
             <div class="relative flex-1">
               <i data-lucide="search" class="w-4 h-4 theme-sub absolute left-3 top-1/2 -translate-y-1/2"></i>
               <input id="search-input" type="text" placeholder="検索や #タグ..." class="w-full theme-card border theme-border rounded-full pl-9 pr-3 py-1.5 text-xs outline-none">
             </div>
-
-            <button onclick="refreshAllTweetsInApp()" class="px-2.5 py-1.5 rounded-full border theme-border text-xs font-bold theme-sub hover:text-white hover:bg-white/5 transition flex items-center gap-1 shrink-0" title="過去のXツイートリンクの全文・動画データを一括で再取得して修復します">
-              <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-              <span class="hidden sm:inline">X再取得</span>
-            </button>
-
-            <button id="select-mode-btn" onclick="toggleSelectMode()" class="px-2.5 py-1.5 rounded-full border theme-border text-xs font-bold theme-sub hover:text-white hover:bg-white/5 transition flex items-center gap-1 shrink-0" title="複数のポストを選択してまとめてコピー">
+            <button id="select-mode-btn" onclick="toggleSelectMode()" class="px-3 py-1.5 rounded-full border theme-border text-xs font-bold theme-sub hover:text-white hover:bg-white/5 transition flex items-center gap-1.5 shrink-0" title="複数のポストを選択してまとめてコピー">
               <i data-lucide="check-square" class="w-3.5 h-3.5"></i>
               <span class="hidden sm:inline">複数選択</span>
             </button>
@@ -470,7 +344,7 @@
 
         <div id="quote-preview-container" class="hidden pt-2">
           <div class="flex items-center justify-between text-xs text-emerald-400 font-bold mb-1 px-1">
-            <span>🔁 引用リツイート元（自動アーカイブ保存対象）</span>
+            <span>🔁 引用リツイート元</span>
             <button onclick="clearQuoteTarget()" class="text-red-400 hover:underline text-[11px]">引用を解除 ×</button>
           </div>
           <div id="quote-preview-box" class="rounded-2xl border theme-border p-3 bg-white/[0.02]"></div>
@@ -492,7 +366,7 @@
             <i data-lucide="repeat-2" class="w-4 h-4"></i>
             <span>本家𝕏を引用</span>
           </button>
-          <button onclick="importTweetAsPost()" class="p-2 rounded-full hover:bg-white/10 theme-accent-text transition flex items-center gap-1 text-xs font-bold" title="本家XのツイートURLから全文・画像・動画・引用元を自分の投稿として取り込む">
+          <button onclick="importTweetAsPost()" class="p-2 rounded-full hover:bg-white/10 theme-accent-text transition flex items-center gap-1 text-xs font-bold" title="本家XのツイートURLから本文・画像・動画・引用元を自分の投稿として取り込む">
             <span class="font-black text-sm leading-none">𝕏</span>
             <span>ツイート取込</span>
           </button>
@@ -502,7 +376,7 @@
           </button>
         </div>
         <div class="text-[11px] theme-sub">
-          <span id="char-count">0 文字</span> · <span class="hidden sm:inline">ChatGPT/Geminiの書式・表コピペ対応</span>
+          <span id="char-count">0 文字</span> · <span class="hidden sm:inline">Ctrl+V 対応</span>
         </div>
       </div>
     </div>
@@ -638,16 +512,8 @@
   <!-- Firebase Realtime Database & Auth -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { getDatabase, ref, set, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-
-    function safeCreateIcons() {
-      try {
-        if (window.lucide && typeof window.lucide.createIcons === 'function') {
-          window.lucide.createIcons();
-        }
-      } catch (e) {}
-    }
 
     if (window.marked && typeof window.marked.setOptions === 'function') {
       window.marked.setOptions({ gfm: true, breaks: true });
@@ -672,7 +538,6 @@
     const provider = new GoogleAuthProvider();
 
     const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%231d9bf0'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='central' text-anchor='middle' fill='%23ffffff' font-family='sans-serif' font-weight='900' font-size='52'%3E%F0%9D%95%8F%3C/text%3E%3C/svg%3E";
-    const CURRENT_SCHEMA_VERSION = 4;
 
     let currentUser = null;
     let postsData = [];
@@ -709,203 +574,42 @@
       rightSidebarWidth: 230
     };
 
-    let editorBlocks = [{ id: crypto.randomUUID(), type: 'text', content: '', html: '' }];
+    let editorBlocks = [{ id: crypto.randomUUID(), type: 'text', content: '' }];
     let activeBlockIndex = 0;
+    let activeCursorPos = 0;
 
     function showToast(msg) {
       const t = document.getElementById('toast');
-      if (!t) return;
       t.textContent = msg;
       t.classList.remove('opacity-0');
-      setTimeout(() => t.classList.add('opacity-0'), 2200);
+      setTimeout(() => t.classList.add('opacity-0'), 1900);
     }
-
-    // =========================================================================
-    // ★ YouTubeのあらゆるURLから確実に11文字の動画IDだけを抽出する関数（404防止）
-    // =========================================================================
-    function extractYouTubeId(rawUrl) {
-      if (!rawUrl || typeof rawUrl !== 'string') return null;
-      const clean = rawUrl.trim();
-      try {
-        const u = new URL(clean);
-        const host = u.hostname.replace(/^www\./i, '').toLowerCase();
-        let vid = null;
-        if (host === 'youtu.be') {
-          vid = u.pathname.split('/').filter(Boolean)[0];
-        } else if (host.endsWith('youtube.com') || host.endsWith('youtube-nocookie.com')) {
-          if (u.searchParams.get('v')) {
-            vid = u.searchParams.get('v');
-          } else {
-            const parts = u.pathname.split('/').filter(Boolean);
-            if (['embed', 'shorts', 'live', 'v'].includes(parts[0]) && parts[1]) {
-              vid = parts[1];
-            }
-          }
-        }
-        if (vid && /^[A-Za-z0-9_-]{11}$/.test(vid)) return vid;
-      } catch (e) {}
-
-      const fallback = clean.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/|live\/|v\/))([A-Za-z0-9_-]{11})/);
-      return fallback ? fallback[1] : null;
-    }
-
-    // =========================================================================
-    // ★ ChatGPT / Gemini コピペ時の 404 iframe 混入を完全排除するサニタイザー
-    // =========================================================================
-    const ALLOWED_RICH_TAGS = [
-      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-      'p', 'br', 'hr',
-      'strong', 'b', 'em', 'i', 'u', 's', 'del', 'mark', 'sub', 'sup',
-      'ul', 'ol', 'li',
-      'table', 'thead', 'tbody', 'tr', 'th', 'td',
-      'blockquote', 'pre', 'code',
-      'a', 'span', 'div'
-    ];
-
-    function cleanRichHtml(rawHtml) {
-      if (!rawHtml) return '';
-      const temp = document.createElement('div');
-      temp.innerHTML = rawHtml;
-      temp.querySelectorAll('iframe, frame, frameset, object, embed, applet, script, style, link, meta, button, svg, canvas, form, input, textarea, select').forEach(el => el.remove());
-
-      temp.querySelectorAll('a').forEach(a => {
-        const href = (a.getAttribute('href') || '').trim();
-        if (!/^https?:\/\//i.test(href)) {
-          a.removeAttribute('href');
-        } else {
-          a.setAttribute('target', '_blank');
-          a.setAttribute('rel', 'noopener noreferrer');
-        }
-      });
-
-      let cleaned = temp.innerHTML;
-      if (window.DOMPurify) {
-        cleaned = window.DOMPurify.sanitize(cleaned, {
-          ALLOWED_TAGS: ALLOWED_RICH_TAGS,
-          ALLOWED_ATTR: ['href', 'target', 'rel', 'colspan', 'rowspan'],
-          FORBID_TAGS: ['iframe', 'object', 'embed', 'frame', 'script', 'style', 'button', 'svg', 'form', 'input']
-        });
-      }
-      return cleaned;
-    }
-
-    function hasMarkdownSyntax(text) {
-      if (!text) return false;
-      return /(^|\n)\s*#{1,6}\s+|\*\*[^*]+\*\*|(^|\n)\s*[-*+]\s+|(^|\n)\s*\d+\.\s+|```|\|.+\|\s*\n\s*\|[-:| ]+\|/m.test(text);
-    }
-
-    function renderFormattedBlockContent(block) {
-      const rawHtml = (block.html || '').trim();
-      const rawText = (block.content || '').trim();
-
-      let outputHtml = '';
-
-      if (rawHtml) {
-        outputHtml = cleanRichHtml(rawHtml);
-      } else if (hasMarkdownSyntax(rawText) && window.marked) {
-        outputHtml = cleanRichHtml(window.marked.parse(rawText));
-      } else {
-        const escaped = (block.content || '')
-          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-          .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="theme-accent-text hover:underline break-all">$1</a>')
-          .replace(/(^|\s)(#[^\s#<]+)/g, '$1<span onclick="event.stopPropagation(); filterByTag(\'$2\')" class="theme-accent-text hover:underline cursor-pointer">$2</span>');
-        return `<div class="whitespace-pre-wrap post-text my-1">${escaped}</div>`;
-      }
-
-      const wrapper = document.createElement('div');
-      wrapper.innerHTML = outputHtml;
-      wrapper.querySelectorAll('a').forEach(a => {
-        a.setAttribute('target', '_blank');
-        a.setAttribute('rel', 'noopener noreferrer');
-        a.setAttribute('onclick', 'event.stopPropagation()');
-      });
-
-      return `<div class="rich-content my-1">${wrapper.innerHTML}</div>`;
-    }
-
-    function htmlToPlainText(htmlStr) {
-      if (!htmlStr) return '';
-      const temp = document.createElement('div');
-      temp.innerHTML = cleanRichHtml(htmlStr)
-        .replace(/<\/(p|div|h[1-6]|li|tr|blockquote|pre)>/gi, '$&\n')
-        .replace(/<br\s*\/?>/gi, '\n')
-        .replace(/<\/(td|th)>/gi, '$&\t');
-      return (temp.textContent || temp.innerText || '').replace(/\n{3,}/g, '\n\n').trim();
-    }
-
-    // =========================================================================
-    // ログイン処理
-    // =========================================================================
-    getRedirectResult(auth).catch((err) => {
-      const errEl = document.getElementById('auth-error');
-      if (errEl && err) {
-        errEl.textContent = "リダイレクト認証エラー: " + err.message;
-        errEl.classList.remove('hidden');
-      }
-    });
 
     document.getElementById('login-btn').addEventListener('click', async () => {
-      const errEl = document.getElementById('auth-error');
-      const statusEl = document.getElementById('login-status-text');
-      errEl.classList.add('hidden');
-      statusEl.textContent = "Google認証ウィンドウを開いています...";
-      try {
-        await signInWithPopup(auth, provider);
-      } catch (err) {
-        if (err.code === 'auth/popup-blocked' || err.code === 'auth/operation-not-supported-in-this-environment') {
-          statusEl.textContent = "リダイレクト認証へ切り替えています...";
-          await signInWithRedirect(auth, provider);
-        } else {
-          statusEl.textContent = "ログインボタンを押してください";
-          errEl.textContent = "ログインエラー (" + (err.code || '') + "): " + err.message;
-          errEl.classList.remove('hidden');
-        }
-      }
-    });
-
-    document.getElementById('login-redirect-btn').addEventListener('click', async () => {
-      const statusEl = document.getElementById('login-status-text');
-      statusEl.textContent = "Googleログイン画面へ移動しています...";
-      try {
-        await signInWithRedirect(auth, provider);
-      } catch (err) {
+      try { await signInWithPopup(auth, provider); }
+      catch (err) {
         const errEl = document.getElementById('auth-error');
-        errEl.textContent = "エラー: " + err.message;
+        errEl.textContent = "ログインエラー: " + err.message;
         errEl.classList.remove('hidden');
       }
     });
-
     document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
-
-    let dbSubscribedUid = null;
 
     onAuthStateChanged(auth, (user) => {
       currentUser = user;
-      const loginScreen = document.getElementById('login-screen');
-      const appScreen = document.getElementById('app-screen');
-      const statusEl = document.getElementById('login-status-text');
-
       if (!user) {
-        dbSubscribedUid = null;
-        if (statusEl) statusEl.textContent = "自分専用の長文・スレッド・引用・メディア同期ノート";
-        loginScreen.classList.remove('hidden');
-        appScreen.classList.add('hidden');
+        document.getElementById('login-screen').classList.remove('hidden');
+        document.getElementById('app-screen').classList.add('hidden');
         return;
       }
-
-      loginScreen.classList.add('hidden');
-      appScreen.classList.remove('hidden');
-      document.getElementById('user-email').textContent = user.email || '';
-
-      if (dbSubscribedUid === user.uid) return;
-      dbSubscribedUid = user.uid;
+      document.getElementById('login-screen').classList.add('hidden');
+      document.getElementById('app-screen').classList.remove('hidden');
+      document.getElementById('user-email').textContent = user.email;
 
       onValue(ref(db, `users/${user.uid}/tweetSnapshots`), (snap) => {
         const val = snap.val() || {};
         Object.entries(val).forEach(([tid, tData]) => {
-          if (tData && tData.schemaVersion === CURRENT_SCHEMA_VERSION) {
-            tweetCache[tid] = tData;
-          }
+          tweetCache[tid] = tData;
         });
         renderFeed();
       });
@@ -1007,13 +711,11 @@
     const resizerEl = document.getElementById('sidebar-resizer');
     let isResizingSidebar = false;
 
-    if (resizerEl) {
-      resizerEl.addEventListener('mousedown', (e) => {
-        isResizingSidebar = true;
-        document.body.style.cursor = 'col-resize';
-        e.preventDefault();
-      });
-    }
+    resizerEl.addEventListener('mousedown', (e) => {
+      isResizingSidebar = true;
+      document.body.style.cursor = 'col-resize';
+      e.preventDefault();
+    });
 
     window.addEventListener('mousemove', (e) => {
       if (!isResizingSidebar) return;
@@ -1070,10 +772,10 @@
       if (isSelectMode) {
         bar.classList.remove('hidden');
         countLabel.textContent = `${selectedPostIds.size}件選択中`;
-        modeBtn.className = "px-2.5 py-1.5 rounded-full border theme-accent-border theme-accent-bg text-white text-xs font-bold transition flex items-center gap-1 shrink-0";
+        modeBtn.className = "px-3 py-1.5 rounded-full border theme-accent-border theme-accent-bg text-white text-xs font-bold transition flex items-center gap-1.5 shrink-0";
       } else {
         bar.classList.add('hidden');
-        modeBtn.className = "px-2.5 py-1.5 rounded-full border theme-border text-xs font-bold theme-sub hover:text-white hover:bg-white/5 transition flex items-center gap-1 shrink-0";
+        modeBtn.className = "px-3 py-1.5 rounded-full border theme-border text-xs font-bold theme-sub hover:text-white hover:bg-white/5 transition flex items-center gap-1.5 shrink-0";
       }
     }
 
@@ -1084,12 +786,8 @@
       });
       parts.push(`[${dateStr}]${post.category ? ` [${post.category}]` : ''}${post.title ? ` ${post.title}` : ''}`);
       (post.blocks || []).forEach(b => {
-        if (b.type === 'text') {
-          const txt = b.content || htmlToPlainText(b.html || '');
-          if (txt) parts.push(txt);
-        } else if (b.type === 'embed' && b.url) {
-          parts.push(b.url);
-        }
+        if (b.type === 'text' && b.content) parts.push(b.content);
+        else if (b.type === 'embed' && b.url) parts.push(b.url);
       });
       if (post.quotedExternalUrl) parts.push(`引用: ${post.quotedExternalUrl}`);
       return parts.join('\n');
@@ -1350,7 +1048,7 @@
         document.getElementById('filter-banner-title').textContent = `メディア付きポスト一覧（${count} 件）`;
         document.getElementById('filter-banner-desc').textContent = '写真や動画・リンクが含まれるポストのみを表示しています';
       }
-      safeCreateIcons();
+      lucide.createIcons();
     }
 
     window.setFilter = function(f) {
@@ -1366,7 +1064,7 @@
       quotedPostId = quoteId;
       quotedExternalUrl = null;
       document.getElementById('post-title').value = '';
-      editorBlocks = [{ id: crypto.randomUUID(), type: 'text', content: '', html: '' }];
+      editorBlocks = [{ id: crypto.randomUUID(), type: 'text', content: '' }];
       activeBlockIndex = 0;
 
       const replyInfo = document.getElementById('reply-parent-info');
@@ -1404,7 +1102,7 @@
       quotedPostId = null;
       quotedExternalUrl = url.trim();
       const tid = extractTweetId(quotedExternalUrl);
-      if (tid) await fetchTweetData(tid, true);
+      if (tid) await fetchTweetData(tid);
       document.getElementById('modal-mode-label').textContent = '本家𝕏を引用リツイート';
       renderQuotePreviewInModal();
     };
@@ -1468,353 +1166,108 @@
     };
 
     // =========================================================================
-    // ★ 本家X（Twitter）の全文＆動画ストリーム抽出（404を起こすiframeフォールバックを完全廃止）
+    // ★ 本家X（Twitter）の取得処理：以前正常に動いていたシンプルな fxtwitter 単体方式に復元
     // =========================================================================
     function extractTweetId(url) {
-      if (!url || typeof url !== 'string') return null;
-      const m = url.match(/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)/i);
+      const m = (url || '').match(/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)/i);
       return m ? m[1] : null;
-    }
-
-    function extractFullTweetText(t) {
-      if (!t) return '';
-      const candidates = [
-        t.raw_text?.text,
-        t.note_tweet?.note_tweet_results?.result?.text,
-        t.note_tweet?.text,
-        t.full_text,
-        t.text
-      ].filter(s => typeof s === 'string' && s.trim().length > 0);
-
-      let longest = candidates.sort((a, b) => b.length - a.length)[0] || '';
-
-      if (t.article) {
-        const artTitle = t.article.title ? `【${t.article.title}】\n\n` : '';
-        let artBody = '';
-        if (Array.isArray(t.article.content?.blocks)) {
-          artBody = t.article.content.blocks.map(b => b.text || '').join('\n\n');
-        } else if (typeof t.article.content === 'string') {
-          artBody = t.article.content;
-        } else if (typeof t.article.preview_text === 'string') {
-          artBody = t.article.preview_text;
-        }
-        if ((artTitle + artBody).trim().length > longest.length) {
-          longest = (artTitle + artBody).trim();
-        }
-      }
-      return longest;
-    }
-
-    function extractTweetMedia(t) {
-      const photos = [];
-      const videos = [];
-      const seenPhotoUrls = new Set();
-      const seenVideoUrls = new Set();
-
-      const addPhoto = (url) => {
-        if (url && typeof url === 'string' && /^https?:\/\//i.test(url) && !seenPhotoUrls.has(url)) {
-          seenPhotoUrls.add(url);
-          photos.push({ url });
-        }
-      };
-
-      const addVideo = (vObj) => {
-        if (!vObj) return;
-        const candidateUrls = [];
-        if (Array.isArray(vObj.variants)) {
-          const mp4s = vObj.variants
-            .filter(vr => vr && vr.url && /^https?:\/\//i.test(vr.url) && (vr.content_type === 'video/mp4' || /\.mp4(\?|$)/i.test(vr.url)))
-            .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-          mp4s.forEach(m => candidateUrls.push(m.url));
-        }
-        if (vObj.url && /^https?:\/\//i.test(vObj.url)) {
-          candidateUrls.push(vObj.url);
-        }
-        const primaryUrl = candidateUrls[0] || '';
-        if (primaryUrl && !seenVideoUrls.has(primaryUrl)) {
-          seenVideoUrls.add(primaryUrl);
-          videos.push({
-            url: primaryUrl,
-            backupUrls: candidateUrls.slice(1),
-            thumbnail_url: vObj.thumbnail_url || vObj.poster || vObj.thumb || '',
-            type: vObj.type || 'video'
-          });
-        }
-      };
-
-      if (t.media) {
-        (t.media.photos || []).forEach(p => addPhoto(p.url));
-        (t.media.videos || []).forEach(v => addVideo(v));
-        (t.media.all || []).forEach(m => {
-          if (m.type === 'photo' || m.type === 'image') addPhoto(m.url);
-          else if (m.type === 'video' || m.type === 'gif' || m.type === 'animated_gif') addVideo(m);
-        });
-      }
-      if (Array.isArray(t.media_extended)) {
-        t.media_extended.forEach(m => {
-          if (m.type === 'image' || m.type === 'photo') addPhoto(m.url);
-          else if (m.type === 'video' || m.type === 'gif' || m.type === 'animated_gif') addVideo(m);
-        });
-      }
-      if (Array.isArray(t.video?.variants)) {
-        addVideo(t.video);
-      }
-
-      return { photos, videos };
-    }
-
-    function mergeBestSnapshot(snapA, snapB) {
-      if (!snapA) return snapB;
-      if (!snapB) return snapA;
-      const bestText = (snapB.text || '').length > (snapA.text || '').length ? snapB.text : snapA.text;
-      const bestVideos = (snapA.media?.videos?.length || 0) >= (snapB.media?.videos?.length || 0)
-        ? snapA.media?.videos
-        : snapB.media?.videos;
-      const bestPhotos = (snapA.media?.photos?.length || 0) >= (snapB.media?.photos?.length || 0)
-        ? snapA.media?.photos
-        : snapB.media?.photos;
-
-      return {
-        ...snapA,
-        text: bestText,
-        media: {
-          photos: bestPhotos || [],
-          videos: bestVideos || []
-        },
-        quote: mergeBestSnapshot(snapA.quote, snapB.quote),
-        schemaVersion: CURRENT_SCHEMA_VERSION,
-        savedAt: Date.now()
-      };
     }
 
     function sanitizeTweetSnapshot(t) {
       if (!t) return null;
-      const rawId = String(t.id || t.tweetID || '');
-      const screenName = t.author?.screen_name || t.user_screen_name || 'user';
+      const fullText = t.raw_text?.text || t.text || '';
+      const photos = (t.media?.photos || []).map(p => ({ url: p.url }));
+      const videos = (t.media?.videos || t.media?.all?.filter(m => m.type === 'video' || m.type === 'gif') || []).map(v => ({
+        url: v.url,
+        thumbnail_url: v.thumbnail_url || ''
+      }));
+
       return {
-        id: rawId,
-        url: t.url || t.tweetURL || `[https://x.com/$](https://x.com/$){screenName}/status/${rawId}`,
-        text: extractFullTweetText(t),
-        created_timestamp: t.created_timestamp || t.date_epoch || null,
+        id: String(t.id || ''),
+        url: t.url || `https://x.com/${t.author?.screen_name || 'i'}/status/${t.id}`,
+        text: fullText,
+        created_timestamp: t.created_timestamp || null,
         author: {
-          name: t.author?.name || t.user_name || 'X User',
-          screen_name: screenName,
-          avatar_url: t.author?.avatar_url || t.user_profile_image_url || DEFAULT_AVATAR
+          name: t.author?.name || 'X User',
+          screen_name: t.author?.screen_name || 'user',
+          avatar_url: t.author?.avatar_url || DEFAULT_AVATAR
         },
-        media: extractTweetMedia(t),
-        quote: (t.quote || t.qrt) ? sanitizeTweetSnapshot(t.quote || t.qrt) : null,
-        schemaVersion: CURRENT_SCHEMA_VERSION,
+        media: { photos, videos },
+        quote: t.quote ? sanitizeTweetSnapshot(t.quote) : null,
         savedAt: Date.now()
       };
     }
 
-    async function fetchTweetData(tweetId, forceRefresh = false) {
-      const cached = tweetCache[tweetId];
-      if (cached && cached.schemaVersion === CURRENT_SCHEMA_VERSION && !forceRefresh) {
-        return cached;
-      }
-
-      let fxSnap = null;
-      let vxSnap = null;
-
+    async function fetchTweetData(tweetId) {
+      if (tweetCache[tweetId]) return tweetCache[tweetId];
       try {
-        const res = await fetch(`[https://api.fxtwitter.com/status/$](https://api.fxtwitter.com/status/$){tweetId}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.tweet) fxSnap = sanitizeTweetSnapshot(data.tweet);
-        }
-      } catch (e) {}
-
-      try {
-        const res2 = await fetch(`[https://api.vxtwitter.com/Twitter/status/$](https://api.vxtwitter.com/Twitter/status/$){tweetId}`);
-        if (res2.ok) {
-          const data2 = await res2.json();
-          if (data2 && (data2.tweetID || data2.text)) vxSnap = sanitizeTweetSnapshot(data2);
-        }
-      } catch (e2) {}
-
-      const finalSnapshot = mergeBestSnapshot(fxSnap, vxSnap);
-      if (finalSnapshot) {
-        tweetCache[tweetId] = finalSnapshot;
-        if (currentUser) {
-          set(ref(db, `users/${currentUser.uid}/tweetSnapshots/${tweetId}`), finalSnapshot);
-          if (finalSnapshot.quote && finalSnapshot.quote.id) {
-            tweetCache[finalSnapshot.quote.id] = finalSnapshot.quote;
-            set(ref(db, `users/${currentUser.uid}/tweetSnapshots/${finalSnapshot.quote.id}`), finalSnapshot.quote);
+        const res = await fetch(`https://api.fxtwitter.com/status/${tweetId}`);
+        if (!res.ok) throw new Error('Fetch failed');
+        const data = await res.json();
+        if (data && data.tweet) {
+          const snapshot = sanitizeTweetSnapshot(data.tweet);
+          tweetCache[tweetId] = snapshot;
+          if (currentUser) {
+            set(ref(db, `users/${currentUser.uid}/tweetSnapshots/${tweetId}`), snapshot);
+            if (snapshot.quote && snapshot.quote.id) {
+              tweetCache[snapshot.quote.id] = snapshot.quote;
+              set(ref(db, `users/${currentUser.uid}/tweetSnapshots/${snapshot.quote.id}`), snapshot.quote);
+            }
           }
+          return snapshot;
         }
-        return finalSnapshot;
+      } catch (e) {
+        console.error('Tweet fetch error:', e);
       }
-
-      return cached || null;
+      return null;
     }
 
-    window.forceRefreshSingleTweet = async function(tweetId, e) {
-      if (e) e.stopPropagation();
-      if (!tweetId) return;
-      showToast('𝕏 ツイートの全文・動画データを再取得中...');
-      const updated = await fetchTweetData(tweetId, true);
-      if (updated) {
-        if (currentUser) {
-          const dbUpdates = {};
-          postsData.forEach(p => {
-            if (p.tweetSnapshots && p.tweetSnapshots[tweetId]) {
-              dbUpdates[`users/${currentUser.uid}/posts/${p.id}/tweetSnapshots/${tweetId}`] = updated;
-            }
-            if (p.quotedExternalSnapshot && String(p.quotedExternalSnapshot.id) === String(tweetId)) {
-              dbUpdates[`users/${currentUser.uid}/posts/${p.id}/quotedExternalSnapshot`] = updated;
-            }
-            (p.blocks || []).forEach((b, idx) => {
-              if (b.type === 'embed' && extractTweetId(b.url) === String(tweetId)) {
-                dbUpdates[`users/${currentUser.uid}/posts/${p.id}/blocks/${idx}/tweetSnapshot`] = updated;
-              }
-            });
-          });
-          if (Object.keys(dbUpdates).length > 0) {
-            await update(ref(db), dbUpdates);
-          }
-        }
-        renderFeed();
-        renderEditor();
-        showToast('全文・動画データを最新状態に更新しました');
-      } else {
-        showToast('再取得に失敗しました');
-      }
-    };
-
-    window.refreshAllTweetsInApp = async function() {
-      const allTweetIds = new Set();
-      postsData.forEach(p => {
-        if (p.quotedExternalUrl) {
-          const tid = extractTweetId(p.quotedExternalUrl);
-          if (tid) allTweetIds.add(tid);
-        }
-        (p.blocks || []).forEach(b => {
-          if (b.type === 'embed' && b.url) {
-            const tid = extractTweetId(b.url);
-            if (tid) allTweetIds.add(tid);
-          } else if (b.type === 'text') {
-            const raw = (b.content || '') + ' ' + (b.html || '');
-            const matches = [...raw.matchAll(/https?:\/\/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)/gi)];
-            matches.forEach(m => allTweetIds.add(m[1]));
-          }
-        });
-      });
-
-      if (allTweetIds.size === 0) {
-        showToast('更新対象のXツイートリンクが見つかりませんでした');
-        return;
-      }
-
-      showToast(`${allTweetIds.size}件のXツイート全文＆動画データを再取得中...`);
-      for (const tid of allTweetIds) {
-        await forceRefreshSingleTweet(tid, null);
-      }
-      showToast(`全${allTweetIds.size}件のXツイートを更新しました！`);
-    };
-
-    // ★ 動画ストリームのエラー時は `<video>` のまま別ストリームURLを試行し、決して404 iframeにはしない
-    window.handleSafeVideoFallback = function(videoEl, tweetId, posterUrl) {
-      const step = Number(videoEl.getAttribute('data-fallback-step') || '0');
-      const backupsRaw = videoEl.getAttribute('data-backups') || '';
-      const backups = backupsRaw ? backupsRaw.split('|').filter(Boolean) : [];
-
-      if (step < backups.length) {
-        videoEl.setAttribute('data-fallback-step', String(step + 1));
-        videoEl.src = backups[step];
-        videoEl.load();
-        return;
-      }
-      if (step === backups.length && tweetId) {
-        videoEl.setAttribute('data-fallback-step', String(step + 1));
-        videoEl.src = `[https://d.fxtwitter.com/i/status/$](https://d.fxtwitter.com/i/status/$){tweetId}.mp4`;
-        videoEl.load();
-        return;
-      }
-      if (step === backups.length + 1 && tweetId) {
-        videoEl.setAttribute('data-fallback-step', String(step + 1));
-        videoEl.src = `[https://d.vxtwitter.com/i/status/$](https://d.vxtwitter.com/i/status/$){tweetId}.mp4`;
-        videoEl.load();
-        return;
-      }
-
-      // 全ての直ストリームがブロックされた場合は、404にならないクリーンなサムネイル＋外部再生カードを表示
-      const box = videoEl.parentElement;
-      if (box) {
-        const xUrl = tweetId ? `[https://x.com/i/status/$](https://x.com/i/status/$){tweetId}` : '#';
-        box.innerHTML = `
-          <a href="${xUrl}" target="_blank" rel="noopener noreferrer" class="block relative group bg-zinc-950 p-4 text-center">
-            ${posterUrl ? `<img src="${posterUrl}" referrerpolicy="no-referrer" class="max-h-72 mx-auto rounded-lg opacity-60 group-hover:opacity-80 transition object-contain">` : ''}
-            <div class="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-sky-500 text-white text-xs font-bold shadow-lg">
-              <span>▶ 本家𝕏で動画を再生する ↗</span>
-            </div>
-          </a>
-        `;
-      }
-    };
-
-    function renderTweetMediaGrid(media, tweetId = '', contextKey = 'tw') {
+    function renderTweetMediaGrid(media) {
       if (!media) return '';
       let html = '';
       if (media.photos && media.photos.length > 0) {
         const cols = media.photos.length > 1 ? 'grid-cols-2' : 'grid-cols-1';
         html += `<div class="grid ${cols} gap-1.5 my-2 rounded-xl overflow-hidden border theme-border">
-          ${media.photos.map(p => `<img src="${p.url}" referrerpolicy="no-referrer" onclick="event.stopPropagation(); openLightbox('${p.url}')" class="w-full max-h-80 object-cover cursor-zoom-in">`).join('')}
+          ${media.photos.map(p => `<img src="${p.url}" onclick="event.stopPropagation(); openLightbox('${p.url}')" class="w-full max-h-72 object-cover cursor-zoom-in">`).join('')}
         </div>`;
       }
       if (media.videos && media.videos.length > 0) {
-        html += media.videos.map((v) => {
-          const backupStr = Array.isArray(v.backupUrls) ? v.backupUrls.join('|') : '';
-          const safePoster = v.thumbnail_url || '';
-          return `
-            <div class="my-2 rounded-xl overflow-hidden border theme-border bg-black" onclick="event.stopPropagation()">
-              <video src="${v.url}"
-                poster="${safePoster}"
-                data-backups="${backupStr}"
-                controls playsinline preload="metadata"
-                onerror="handleSafeVideoFallback(this, '${tweetId}', '${safePoster}')"
-                class="w-full max-h-[420px] mx-auto bg-black block"></video>
-            </div>
-          `;
-        }).join('');
+        html += media.videos.map(v => `
+          <video src="${v.url}" poster="${v.thumbnail_url || ''}" controls playsinline onclick="event.stopPropagation()" class="w-full max-h-80 rounded-xl my-2 bg-black border theme-border"></video>
+        `).join('');
       }
       return html;
     }
 
-    window.toggleExpandTweetCard = function(cardKey, e) {
+    window.toggleExpandTweetCard = function(tid, e) {
       if (e) e.stopPropagation();
-      if (expandedTweetCardIds.has(cardKey)) {
-        expandedTweetCardIds.delete(cardKey);
-      } else {
-        expandedTweetCardIds.add(cardKey);
-      }
+      if (expandedTweetCardIds.has(tid)) expandedTweetCardIds.delete(tid);
+      else expandedTweetCardIds.add(tid);
       renderFeed();
     };
 
-    function buildNativeTweetCardHtml(t, isQuoted = false, parentContextKey = 'root') {
+    function buildNativeTweetCardHtml(t, isQuoted = false) {
       if (!t) return '';
-      const cardKey = `${parentContextKey}_${t.id || 'tw'}_${isQuoted ? 'q' : 'm'}`.replace(/[^a-zA-Z0-9_-]/g, '_');
       const dateStr = t.created_timestamp
         ? new Date(t.created_timestamp * 1000).toLocaleString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
         : '';
 
       const rawText = t.text || '';
-      const lineCount = rawText.split('\n').length;
-      const isLongTweet = rawText.length > 140 || lineCount >= 5;
-      const isExpanded = expandedTweetCardIds.has(cardKey);
-      const shouldCollapse = isLongTweet && !isExpanded;
+      const isLong = rawText.length > 180 || rawText.split('\n').length > 6;
+      const isExpanded = expandedTweetCardIds.has(String(t.id));
+      const shouldCollapse = isLong && !isExpanded;
 
       const escapedText = rawText
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="theme-accent-text hover:underline break-all">$1</a>');
 
-      const quoteHtml = (t.quote && !isQuoted) ? buildNativeTweetCardHtml(t.quote, true, cardKey) : '';
+      const quoteHtml = (t.quote && !isQuoted) ? buildNativeTweetCardHtml(t.quote, true) : '';
 
       return `
         <div class="${isQuoted ? 'mt-2.5 p-3 rounded-xl bg-white/[0.03]' : 'my-2 p-3.5 rounded-2xl theme-card'} border theme-border transition">
           <div class="flex items-center justify-between gap-2 mb-1.5">
             <div class="flex items-center gap-2 min-w-0">
-              <img src="${t.author?.avatar_url || DEFAULT_AVATAR}" referrerpolicy="no-referrer" class="${isQuoted ? 'w-5 h-5' : 'w-8 h-8'} rounded-full object-cover border theme-border shrink-0">
+              <img src="${t.author?.avatar_url || DEFAULT_AVATAR}" class="${isQuoted ? 'w-5 h-5' : 'w-8 h-8'} rounded-full object-cover border theme-border shrink-0">
               <div class="flex items-center gap-1.5 flex-wrap min-w-0 text-xs">
                 <span class="font-bold truncate" style="color: var(--text-main)">${t.author?.name || 'X User'}</span>
                 <span class="theme-sub truncate">@${t.author?.screen_name || ''}</span>
@@ -1822,22 +1275,17 @@
               </div>
             </div>
             <div class="flex items-center gap-1 shrink-0">
-              <button onclick="forceRefreshSingleTweet('${t.id}', event)" class="text-[10px] px-2 py-0.5 rounded-full bg-white/5 hover:bg-white/10 theme-sub hover:text-white border theme-border transition" title="このツイートの全文・動画データを再取得して更新">
-                🔄 再取得
-              </button>
-              <a href="${t.url || `[https://x.com/i/status/$](https://x.com/i/status/$){t.id}`}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="text-[11px] theme-sub hover:text-white px-2 py-0.5 rounded-full border theme-border" title="本家Xで開く">𝕏 ↗</a>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">保存済</span>
+              <a href="${t.url || `https://x.com/i/status/${t.id}`}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="text-[11px] theme-sub hover:text-white px-2 py-0.5 rounded-full border theme-border" title="本家Xで開く">𝕏 ↗</a>
             </div>
           </div>
-
           <div class="whitespace-pre-wrap post-text leading-relaxed ${shouldCollapse ? 'post-collapsed' : ''}">${escapedText}</div>
-
-          ${isLongTweet ? `
-            <button onclick="toggleExpandTweetCard('${cardKey}', event)" class="mt-1.5 mb-1 text-xs font-bold theme-accent-text hover:underline flex items-center gap-1">
-              <span>${shouldCollapse ? `さらに表示（全文 ${rawText.length}文字）` : '折りたたむ'}</span>
+          ${isLong ? `
+            <button onclick="toggleExpandTweetCard('${t.id}', event)" class="mt-1 text-xs font-bold theme-accent-text hover:underline block">
+              ${shouldCollapse ? 'さらに表示' : '折りたたむ'}
             </button>
           ` : ''}
-
-          ${renderTweetMediaGrid(t.media, t.id, cardKey)}
+          ${renderTweetMediaGrid(t.media)}
           ${quoteHtml}
         </div>
       `;
@@ -1851,20 +1299,13 @@
         year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
       });
 
-      const textBlocksHtml = (qPost.blocks || [])
+      const textSnippet = (qPost.blocks || [])
         .filter(b => b.type === 'text')
-        .map(b => renderFormattedBlockContent(b))
-        .join('');
-
-      const plainText = (qPost.blocks || [])
-        .filter(b => b.type === 'text')
-        .map(b => b.content || htmlToPlainText(b.html || ''))
+        .map(b => b.content || '')
         .join('\n');
 
-      const cardKey = `internal_quote_${qPost.id}`;
-      const isLong = plainText.length > 140 || plainText.split('\n').length >= 5;
-      const isExpanded = expandedTweetCardIds.has(cardKey);
-      const shouldCollapse = isLong && !isExpanded;
+      const escaped = textSnippet
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
       const firstImage = (qPost.blocks || []).find(b => b.type === 'image');
 
@@ -1880,12 +1321,7 @@
             </div>
           </div>
           ${qPost.title ? `<div class="font-bold text-sm mb-1">${qPost.title}</div>` : ''}
-          <div class="${shouldCollapse ? 'post-collapsed' : ''}">${textBlocksHtml}</div>
-          ${isLong ? `
-            <button onclick="toggleExpandTweetCard('${cardKey}', event)" class="mt-1 text-xs font-bold theme-accent-text hover:underline block">
-              ${shouldCollapse ? 'さらに表示' : '折りたたむ'}
-            </button>
-          ` : ''}
+          <div class="whitespace-pre-wrap text-sm leading-relaxed line-clamp-4">${escaped}</div>
           ${firstImage ? `<img src="${firstImage.url}" onclick="event.stopPropagation(); openLightbox('${firstImage.url}')" class="mt-2 max-h-56 rounded-xl border theme-border object-cover">` : ''}
         </div>
       `;
@@ -1921,10 +1357,9 @@
         node.setAttribute('data-loaded', 'true');
         const tid = node.getAttribute('data-tweet-id');
         const fallbackUrl = node.getAttribute('data-tweet-url');
-        const ctxKey = node.getAttribute('data-ctx-key') || 'card';
         const tweet = await fetchTweetData(tid);
         if (tweet) {
-          node.innerHTML = buildNativeTweetCardHtml(tweet, false, ctxKey);
+          node.innerHTML = buildNativeTweetCardHtml(tweet, false);
         } else {
           node.innerHTML = `<a href="${fallbackUrl}" target="_blank" rel="noopener noreferrer" class="block my-2 p-3 rounded-xl border theme-border text-xs theme-accent-text hover:underline">𝕏 ポストを開く: ${fallbackUrl}</a>`;
         }
@@ -1939,46 +1374,50 @@
         alert("有効なX（Twitter）のステータスURLではありません。");
         return;
       }
-      const tweet = await fetchTweetData(tid, true);
+      const tweet = await fetchTweetData(tid);
       if (!tweet) {
         alert("ツイート情報の取得に失敗しました（非公開アカウントまたは削除済みの可能性があります）。");
         return;
       }
 
-      if (editorBlocks.length === 1 && editorBlocks[0].type === 'text' && !editorBlocks[0].content.trim() && !editorBlocks[0].html) {
-        editorBlocks = [{
-          id: crypto.randomUUID(),
-          type: 'embed',
-          url: tweet.url || url.trim(),
-          caption: '',
-          tweetSnapshot: tweet
-        }];
+      const headerLine = `🐦 @${tweet.author?.screen_name || 'user'} (${tweet.author?.name || ''})\n`;
+      const bodyText = headerLine + (tweet.text || '');
+
+      if (editorBlocks.length === 1 && editorBlocks[0].type === 'text' && !editorBlocks[0].content.trim()) {
+        editorBlocks = [{ id: crypto.randomUUID(), type: 'text', content: bodyText }];
       } else {
-        editorBlocks.push({
-          id: crypto.randomUUID(),
-          type: 'embed',
-          url: tweet.url || url.trim(),
-          caption: '',
-          tweetSnapshot: tweet
+        editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: bodyText });
+      }
+
+      if (tweet.media?.photos) {
+        tweet.media.photos.forEach(p => {
+          editorBlocks.push({ id: crypto.randomUUID(), type: 'image', url: p.url, caption: '' });
+        });
+      }
+      if (tweet.media?.videos) {
+        tweet.media.videos.forEach(v => {
+          editorBlocks.push({ id: crypto.randomUUID(), type: 'embed', url: v.url, caption: '' });
         });
       }
 
-      editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: '', html: '' });
+      if (tweet.quote) {
+        const quoteUrl = tweet.quote.url || `https://x.com/${tweet.quote.author?.screen_name || 'i'}/status/${tweet.quote.id}`;
+        tweetCache[tweet.quote.id] = tweet.quote;
+        quotedExternalUrl = quoteUrl;
+        renderQuotePreviewInModal();
+      }
+
+      editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: '' });
       activeBlockIndex = editorBlocks.length - 1;
       renderEditor();
       hydrateTweetCards();
     };
 
     // =========================================================================
-    // リッチテキスト対応エディタ
+    // ★ エディタ：以前のシンプルでバグのない textarea 方式に復元
     // =========================================================================
-    window.execRichCmd = function(cmd, val = null) {
-      document.execCommand(cmd, false, val);
-    };
-
     window.renderEditor = function() {
       const container = document.getElementById('editor-blocks');
-      if (!container) return;
       container.innerHTML = '';
 
       editorBlocks.forEach((block, idx) => {
@@ -1986,20 +1425,9 @@
         wrapper.className = "bg-black/30 border theme-border rounded-xl p-2.5";
 
         const controls = `
-          <div class="flex items-center justify-between text-[11px] theme-sub mb-1.5 pb-1 border-b border-white/5">
-            <div class="flex items-center gap-1 flex-wrap">
-              <span>${block.type === 'text' ? '📝 リッチテキスト段落' : block.type === 'image' ? '🖼️ 写真' : '🎬 動画 / Webリンク / 𝕏ポスト'}</span>
-              ${block.type === 'text' ? `
-                <div class="flex items-center gap-0.5 ml-2 bg-white/5 rounded-lg px-1 py-0.5">
-                  <button type="button" onmousedown="event.preventDefault(); execRichCmd('bold')" class="px-1.5 py-0.5 hover:bg-white/10 rounded font-extrabold text-white" title="太字">B</button>
-                  <button type="button" onmousedown="event.preventDefault(); execRichCmd('formatBlock', 'H2')" class="px-1.5 py-0.5 hover:bg-white/10 rounded font-bold text-white" title="大見出し">H2</button>
-                  <button type="button" onmousedown="event.preventDefault(); execRichCmd('formatBlock', 'H3')" class="px-1.5 py-0.5 hover:bg-white/10 rounded font-bold text-white" title="中見出し">H3</button>
-                  <button type="button" onmousedown="event.preventDefault(); execRichCmd('formatBlock', 'P')" class="px-1.5 py-0.5 hover:bg-white/10 rounded text-gray-300" title="標準文字">標準</button>
-                  <button type="button" onmousedown="event.preventDefault(); execRichCmd('insertUnorderedList')" class="px-1.5 py-0.5 hover:bg-white/10 rounded text-gray-300" title="箇条書き">• リスト</button>
-                </div>
-              ` : ''}
-            </div>
-            <div class="flex items-center gap-1 shrink-0">
+          <div class="flex items-center justify-between text-[11px] theme-sub mb-1">
+            <span>${block.type === 'text' ? 'テキスト段落' : block.type === 'image' ? '写真' : '動画 / Webリンク / 𝕏引用'}</span>
+            <div class="flex items-center gap-1">
               <button onclick="moveBlock(${idx}, -1)" class="px-1.5 py-0.5 hover:bg-white/10 rounded">↑</button>
               <button onclick="moveBlock(${idx}, 1)" class="px-1.5 py-0.5 hover:bg-white/10 rounded">↓</button>
               <button onclick="removeBlock(${idx})" class="px-1.5 py-0.5 text-red-400 hover:bg-red-500/10 rounded">削除</button>
@@ -2009,83 +1437,25 @@
 
         if (block.type === 'text') {
           wrapper.innerHTML = controls;
-          const richDiv = document.createElement('div');
-          richDiv.contentEditable = "true";
-          richDiv.className = "rich-editor-box rich-content w-full bg-transparent outline-none min-h-[95px] py-1";
-          richDiv.setAttribute('data-placeholder', 'いまどうしてる？（ChatGPTやGeminiの回答を貼り付けると、文字サイズ・太字・表までそのまま再現されます）');
-
-          if (block.html && block.html.trim()) {
-            const safeHtml = cleanRichHtml(block.html);
-            richDiv.innerHTML = safeHtml;
-            editorBlocks[idx].html = safeHtml;
-          } else if (block.content) {
-            if (hasMarkdownSyntax(block.content) && window.marked) {
-              const parsed = cleanRichHtml(window.marked.parse(block.content));
-              richDiv.innerHTML = parsed;
-              editorBlocks[idx].html = parsed;
-            } else {
-              richDiv.innerText = block.content;
-            }
-          }
-
-          richDiv.addEventListener('focus', () => { activeBlockIndex = idx; });
-          richDiv.addEventListener('click', () => { activeBlockIndex = idx; });
-          richDiv.addEventListener('keyup', () => { activeBlockIndex = idx; });
-
-          richDiv.addEventListener('input', () => {
+          const ta = document.createElement('textarea');
+          ta.className = "w-full bg-transparent outline-none text-sm leading-relaxed resize-none min-h-[85px]";
+          ta.placeholder = "いまどうしてる？（XのURL貼付で自動保存 / ChatGPT等の見出し・太字・表コピペ対応 / Ctrl+V スクショ対応）";
+          ta.value = block.content || '';
+          ta.addEventListener('input', (e) => {
+            editorBlocks[idx].content = e.target.value;
             activeBlockIndex = idx;
-            editorBlocks[idx].html = cleanRichHtml(richDiv.innerHTML);
-            editorBlocks[idx].content = htmlToPlainText(richDiv.innerHTML);
+            activeCursorPos = e.target.selectionStart || e.target.value.length;
             updateCharCount();
           });
-
-          richDiv.addEventListener('paste', async (e) => {
+          ta.addEventListener('click', (e) => {
             activeBlockIndex = idx;
-            const clip = e.clipboardData;
-            if (!clip) return;
-
-            const items = Array.from(clip.items || []);
-            const imageItems = items.filter(item => item.type.startsWith('image/'));
-            if (imageItems.length > 0) {
-              e.preventDefault();
-              e.stopPropagation();
-              for (const item of imageItems) {
-                const file = item.getAsFile();
-                if (file) {
-                  const dataUrl = await compressImage(file);
-                  insertBlockAtCursor({ id: crypto.randomUUID(), type: 'image', url: dataUrl, caption: '' });
-                }
-              }
-              return;
-            }
-
-            const htmlData = clip.getData('text/html');
-            const textData = clip.getData('text/plain');
-
-            e.preventDefault();
-            e.stopPropagation();
-
-            let htmlToInsert = '';
-
-            if (textData && hasMarkdownSyntax(textData) && window.marked) {
-              htmlToInsert = cleanRichHtml(window.marked.parse(textData));
-            } else if (htmlData && htmlData.trim()) {
-              htmlToInsert = cleanRichHtml(htmlData);
-            } else if (textData) {
-              htmlToInsert = textData
-                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                .replace(/\r?\n/g, '<br>');
-            }
-
-            if (htmlToInsert) {
-              document.execCommand('insertHTML', false, htmlToInsert);
-              editorBlocks[idx].html = cleanRichHtml(richDiv.innerHTML);
-              editorBlocks[idx].content = htmlToPlainText(richDiv.innerHTML);
-              updateCharCount();
-            }
+            activeCursorPos = e.target.selectionStart || 0;
           });
-
-          wrapper.appendChild(richDiv);
+          ta.addEventListener('keyup', (e) => {
+            activeBlockIndex = idx;
+            activeCursorPos = e.target.selectionStart || 0;
+          });
+          wrapper.appendChild(ta);
         } else if (block.type === 'image') {
           wrapper.innerHTML = controls + `
             <img src="${block.url}" class="max-h-64 rounded-lg object-contain mx-auto my-1">
@@ -2094,7 +1464,7 @@
               class="w-full mt-1 bg-transparent text-xs theme-sub border-b border-transparent focus:border-gray-600 outline-none">
           `;
         } else if (block.type === 'embed') {
-          wrapper.innerHTML = controls + renderMediaHtml(block.url, block.tweetSnapshot, `editor_${idx}`) + `
+          wrapper.innerHTML = controls + renderMediaHtml(block.url, block.tweetSnapshot) + `
             <input type="text" placeholder="キャプション・メモ（任意）" value="${block.caption || ''}"
               oninput="updateBlockCaption(${idx}, this.value)"
               class="w-full mt-1 bg-transparent text-xs theme-sub border-b border-transparent focus:border-gray-600 outline-none">
@@ -2104,36 +1474,32 @@
       });
 
       updateCharCount();
-      safeCreateIcons();
+      lucide.createIcons();
       hydrateTweetCards();
     };
 
     function updateCharCount() {
       const total = editorBlocks
         .filter(b => b.type === 'text')
-        .reduce((sum, b) => {
-          const txt = b.content || htmlToPlainText(b.html || '');
-          return sum + txt.length;
-        }, 0);
-      const el = document.getElementById('char-count');
-      if (el) el.textContent = `${total.toLocaleString()} 文字`;
+        .reduce((sum, b) => sum + (b.content ? b.content.length : 0), 0);
+      document.getElementById('char-count').textContent = `${total.toLocaleString()} 文字`;
     }
 
     function insertBlockAtCursor(mediaBlock) {
       const target = editorBlocks[activeBlockIndex];
       if (target && target.type === 'text') {
-        const hasContent = (target.content && target.content.trim().length > 0) || (target.html && target.html.trim().length > 0);
-        if (!hasContent) {
-          editorBlocks.splice(activeBlockIndex, 1, mediaBlock, { id: crypto.randomUUID(), type: 'text', content: '', html: '' });
-          activeBlockIndex = Math.min(activeBlockIndex + 1, editorBlocks.length - 1);
-        } else {
-          editorBlocks.splice(activeBlockIndex + 1, 0, mediaBlock, { id: crypto.randomUUID(), type: 'text', content: '', html: '' });
-          activeBlockIndex = Math.min(activeBlockIndex + 2, editorBlocks.length - 1);
-        }
+        const text = target.content || '';
+        const before = text.slice(0, activeCursorPos);
+        const after = text.slice(activeCursorPos);
+        const newBlocks = [];
+        if (before.length > 0) newBlocks.push({ id: crypto.randomUUID(), type: 'text', content: before });
+        newBlocks.push(mediaBlock);
+        newBlocks.push({ id: crypto.randomUUID(), type: 'text', content: after });
+        editorBlocks.splice(activeBlockIndex, 1, ...newBlocks);
+        activeBlockIndex = Math.min(activeBlockIndex + 2, editorBlocks.length - 1);
       } else {
         editorBlocks.push(mediaBlock);
-        editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: '', html: '' });
-        activeBlockIndex = editorBlocks.length - 1;
+        editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: '' });
       }
       renderEditor();
     }
@@ -2172,7 +1538,6 @@
     window.addEventListener('paste', async (e) => {
       const modalOpen = !document.getElementById('post-modal').classList.contains('hidden');
       if (!modalOpen) return;
-      if (e.target && e.target.isContentEditable) return;
       const items = Array.from(e.clipboardData?.items || []);
       const imageItems = items.filter(item => item.type.startsWith('image/'));
       if (imageItems.length === 0) return;
@@ -2188,7 +1553,7 @@
     });
 
     window.insertUrlBlock = async function() {
-      const url = prompt("挿入したいURL（本家XのツイートURL・YouTube・Webサイト・動画mp4・画像URL）を入力してください:");
+      const url = prompt("挿入したいURL（本家XのツイートURL・Webサイト・YouTube・動画mp4・画像URL）を入力してください:");
       if (!url || !url.trim()) return;
       let formatted = url.trim();
       if (!/^https?:\/\//i.test(formatted) && !formatted.startsWith('data:')) {
@@ -2197,13 +1562,13 @@
       const tid = extractTweetId(formatted);
       let tweetSnapshot = null;
       if (tid) {
-        tweetSnapshot = await fetchTweetData(tid, true);
+        tweetSnapshot = await fetchTweetData(tid);
       }
       insertBlockAtCursor({ id: crypto.randomUUID(), type: 'embed', url: formatted, caption: '', tweetSnapshot });
     };
 
     window.addTextBlock = function() {
-      editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: '', html: '' });
+      editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: '' });
       activeBlockIndex = editorBlocks.length - 1;
       renderEditor();
     };
@@ -2217,7 +1582,7 @@
 
     window.removeBlock = function(idx) {
       editorBlocks.splice(idx, 1);
-      if (editorBlocks.length === 0) editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: '', html: '' });
+      if (editorBlocks.length === 0) editorBlocks.push({ id: crypto.randomUUID(), type: 'text', content: '' });
       renderEditor();
     };
 
@@ -2229,17 +1594,7 @@
       if (!currentUser) return;
       const title = document.getElementById('post-title').value.trim();
       const category = document.getElementById('post-category').value || 'メモ';
-      const cleanedBlocks = editorBlocks.map(b => {
-        if (b.type === 'text' && b.html) {
-          return { ...b, html: cleanRichHtml(b.html), content: htmlToPlainText(b.html) };
-        }
-        return b;
-      }).filter(b => {
-        if (b.type !== 'text') return true;
-        const plain = (b.content || htmlToPlainText(b.html || '')).trim();
-        const hasTable = (b.html || '').includes('<table');
-        return plain.length > 0 || hasTable;
-      });
+      const cleanedBlocks = editorBlocks.filter(b => b.type !== 'text' || (b.content && b.content.trim().length > 0));
       if (!title && cleanedBlocks.length === 0 && !quotedPostId && !quotedExternalUrl) return;
 
       const embeddedSnapshots = {};
@@ -2253,9 +1608,8 @@
               embeddedSnapshots[tid] = snap;
             }
           }
-        } else if (b.type === 'text') {
-          const raw = (b.content || '') + ' ' + (b.html || '');
-          const matches = [...raw.matchAll(/https?:\/\/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)/gi)];
+        } else if (b.type === 'text' && b.content) {
+          const matches = [...b.content.matchAll(/https?:\/\/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)/gi)];
           for (const m of matches) {
             const tid = m[1];
             const snap = await fetchTweetData(tid);
@@ -2298,64 +1652,35 @@
       closePostModal();
     };
 
-    // ★ メディアURLの描画（404を起こす不完全なiframe生成を完全排除）
-    function renderMediaHtml(url, savedSnapshot = null, contextKey = 'media') {
+    function renderMediaHtml(url, savedSnapshot = null) {
       const safeUrl = (url || '').trim();
-      if (!safeUrl || (!/^https?:\/\//i.test(safeUrl) && !safeUrl.startsWith('data:image/'))) {
-        return '';
-      }
-
-      // 1. 本家X（Twitter）のURL
       const tweetId = extractTweetId(safeUrl);
       if (tweetId) {
-        const snap = (savedSnapshot && savedSnapshot.schemaVersion === CURRENT_SCHEMA_VERSION)
-          ? savedSnapshot
-          : (tweetCache[tweetId] && tweetCache[tweetId].schemaVersion === CURRENT_SCHEMA_VERSION ? tweetCache[tweetId] : null);
-
-        if (snap) {
-          tweetCache[tweetId] = snap;
-          return buildNativeTweetCardHtml(snap, false, contextKey);
+        if (savedSnapshot) {
+          tweetCache[tweetId] = savedSnapshot;
+          return buildNativeTweetCardHtml(savedSnapshot, false);
+        }
+        if (tweetCache[tweetId]) {
+          return buildNativeTweetCardHtml(tweetCache[tweetId], false);
         }
         setTimeout(() => window.hydrateTweetCards && window.hydrateTweetCards(), 10);
-        return `<div data-tweet-id="${tweetId}" data-tweet-url="${safeUrl}" data-ctx-key="${contextKey}" class="my-2 p-4 rounded-2xl border theme-border theme-card text-xs theme-sub animate-pulse">𝕏 ポスト全文＆動画データを取得中...</div>`;
+        return `<div data-tweet-id="${tweetId}" data-tweet-url="${safeUrl}" class="my-2 p-4 rounded-2xl border theme-border theme-card text-xs theme-sub animate-pulse">𝕏 ポスト＆引用データを取得・アーカイブ保存中...</div>`;
       }
-
-      // 2. YouTubeのURL（確実に11文字のIDが検証できた時のみiframeを生成し、下に直リンクも添える）
-      const ytId = extractYouTubeId(safeUrl);
-      if (ytId) {
-        return `
-          <div class="my-2 rounded-2xl overflow-hidden border theme-border bg-black" onclick="event.stopPropagation()">
-            <div class="aspect-video w-full">
-              <iframe src="[https://www.youtube.com/embed/$](https://www.youtube.com/embed/$){ytId}"
-                class="w-full h-full border-0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowfullscreen loading="lazy"></iframe>
-            </div>
-            <div class="px-3 py-1.5 bg-zinc-950 border-t theme-border flex items-center justify-between text-[11px] theme-sub">
-              <span>▶ YouTube</span>
-              <a href="[https://www.youtube.com/watch?v=$](https://www.youtube.com/watch?v=$){ytId}" target="_blank" rel="noopener noreferrer" class="text-sky-400 hover:underline font-bold">YouTubeで直接開く ↗</a>
-            </div>
-          </div>
-        `;
-      }
-
-      // 3. 動画ファイル直リンク
-      if (/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(safeUrl)) {
-        return `<div class="my-2 rounded-xl overflow-hidden border theme-border bg-black" onclick="event.stopPropagation()">
-          <video src="${safeUrl}" controls playsinline preload="metadata"
-            class="w-full max-h-96 mx-auto bg-black block"></video>
+      const ytMatch = safeUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]{11})/);
+      if (ytMatch && ytMatch[1]) {
+        return `<div class="aspect-video w-full rounded-xl overflow-hidden my-2 border theme-border">
+          <iframe src="https://www.youtube.com/embed/${ytMatch[1]}" class="w-full h-full" allowfullscreen></iframe>
         </div>`;
       }
-
-      // 4. 画像ファイル直リンク
-      if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|avif)(\?.*)?$/i.test(safeUrl) || safeUrl.startsWith('data:image/')) {
-        return `<img src="${safeUrl}" referrerpolicy="no-referrer" onclick="event.stopPropagation(); openLightbox('${safeUrl}')" class="max-h-96 rounded-xl object-contain my-2 cursor-zoom-in">`;
+      if (/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(safeUrl)) {
+        return `<video src="${safeUrl}" controls onclick="event.stopPropagation()" class="w-full max-h-96 rounded-xl my-2 bg-black"></video>`;
       }
-
-      // 5. 一般のWebサイトURL → リンクカード
+      if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|avif)(\?.*)?$/i.test(safeUrl) || safeUrl.startsWith('data:image/')) {
+        return `<img src="${safeUrl}" onclick="event.stopPropagation(); openLightbox('${safeUrl}')" class="max-h-96 rounded-xl object-contain my-2 cursor-zoom-in">`;
+      }
       let hostname = safeUrl;
       try { hostname = new URL(safeUrl).hostname; } catch (e) {}
-      const favicon = `[https://www.google.com/s2/favicons?domain=$](https://www.google.com/s2/favicons?domain=$){encodeURIComponent(hostname)}&sz=64`;
+      const favicon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=64`;
       return `
         <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="block my-2 p-3.5 rounded-2xl border theme-border theme-card hover:bg-white/[0.04] transition group">
           <div class="flex items-center gap-3">
@@ -2389,12 +1714,8 @@
       const parts = [];
       if (post.title) parts.push(post.title);
       (post.blocks || []).forEach(b => {
-        if (b.type === 'text') {
-          const txt = b.content || htmlToPlainText(b.html || '');
-          if (txt) parts.push(txt);
-        } else if (b.type === 'embed' && b.url) {
-          parts.push(b.url);
-        }
+        if (b.type === 'text' && b.content) parts.push(b.content);
+        else if (b.type === 'embed' && b.url) parts.push(b.url);
       });
       if (post.quotedExternalUrl) parts.push(post.quotedExternalUrl);
       const textToCopy = parts.join('\n\n');
@@ -2412,6 +1733,24 @@
       }
     };
 
+    // Markdown（見出し・太字・表）が含まれている場合のみ綺麗に装飾する関数
+    function formatTextOrMarkdown(rawContent) {
+      if (!rawContent) return '';
+      const hasMd = /(^|\n)\s*#{1,6}\s+|\*\*[^*]+\*\*|(^|\n)\s*[-*+]\s+|```|\|.+\|\s*\n\s*\|[-:| ]+\|/m.test(rawContent);
+      if (hasMd && window.marked) {
+        const html = window.marked.parse(rawContent);
+        const temp = document.createElement('div');
+        temp.innerHTML = html;
+        temp.querySelectorAll('iframe, object, embed, script').forEach(el => el.remove());
+        return `<div class="md-content my-1">${temp.innerHTML}</div>`;
+      }
+      const escaped = rawContent
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="theme-accent-text hover:underline break-all">$1</a>')
+        .replace(/(^|\s)(#[^\s#<]+)/g, '$1<span onclick="event.stopPropagation(); filterByTag(\'$2\')" class="theme-accent-text hover:underline cursor-pointer">$2</span>');
+      return `<p class="whitespace-pre-wrap post-text my-1">${escaped}</p>`;
+    }
+
     function buildPostItemHtml(post, isChild = false, hasNextSibling = false, replyCount = 0, quoteCount = 0) {
       const dateStr = new Date(post.createdAt || Date.now()).toLocaleString('ja-JP', {
         month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -2419,49 +1758,33 @@
 
       if (post.tweetSnapshots) {
         Object.entries(post.tweetSnapshots).forEach(([tid, snap]) => {
-          if (!tweetCache[tid] && snap?.schemaVersion === CURRENT_SCHEMA_VERSION) {
-            tweetCache[tid] = snap;
-          }
+          if (!tweetCache[tid]) tweetCache[tid] = snap;
         });
       }
-      if (post.quotedExternalSnapshot && post.quotedExternalSnapshot.id && post.quotedExternalSnapshot.schemaVersion === CURRENT_SCHEMA_VERSION) {
+      if (post.quotedExternalSnapshot && post.quotedExternalSnapshot.id) {
         tweetCache[post.quotedExternalSnapshot.id] = post.quotedExternalSnapshot;
       }
 
-      const isPostExpanded = expandedPostIds.has(post.id);
+      const totalText = (post.blocks || [])
+        .filter(b => b.type === 'text')
+        .map(b => b.content || '')
+        .join('\n');
+      const lineCount = totalText.split('\n').length;
+      const isLongPost = totalText.length > 220 || lineCount > 6 || (post.blocks || []).length > 2;
+      const isExpanded = expandedPostIds.has(post.id);
+      const shouldCollapse = isLongPost && !isExpanded;
 
-      let hasLongTextInPost = false;
-      const blocksHtml = (post.blocks || []).map((b, bIdx) => {
+      const blocksHtml = (post.blocks || []).map(b => {
         if (b.type === 'text') {
-          const rawPlain = b.content || htmlToPlainText(b.html || '');
-          const isThisBlockLong = rawPlain.length > 220 || rawPlain.split('\n').length >= 7;
-          if (isThisBlockLong) hasLongTextInPost = true;
-          const collapseThisText = isThisBlockLong && !isPostExpanded;
-
-          const inlineSource = (b.content || '') + ' ' + (b.html || '');
-          const inlineTweetMatches = [...inlineSource.matchAll(/https?:\/\/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)[^\s<"']*/gi)];
-          const seenTids = new Set();
-          const inlineTweetCards = inlineTweetMatches.map((m, mIdx) => {
+          const rawContent = b.content || '';
+          const inlineTweetMatches = [...rawContent.matchAll(/https?:\/\/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)[^\s<]*/gi)];
+          const inlineTweetCards = inlineTweetMatches.map(m => {
             const tid = m[1];
-            if (seenTids.has(tid)) return '';
-            seenTids.add(tid);
             const savedSnap = post.tweetSnapshots?.[tid] || tweetCache[tid] || null;
-            return renderMediaHtml(m[0], savedSnap, `post_${post.id}_in_${bIdx}_${mIdx}`);
+            return renderMediaHtml(m[0], savedSnap);
           }).join('');
 
-          const formattedHtml = renderFormattedBlockContent(b);
-
-          return `
-            <div class="${collapseThisText ? 'post-collapsed' : ''}">
-              ${formattedHtml}
-            </div>
-            ${collapseThisText ? `
-              <button onclick="toggleExpandPost('${post.id}', event)" class="mt-1 mb-1 text-xs font-bold theme-accent-text hover:underline block">
-                さらに表示（全文 ${rawPlain.length}文字）
-              </button>
-            ` : ''}
-            ${inlineTweetCards}
-          `;
+          return `${formatTextOrMarkdown(rawContent)}${inlineTweetCards}`;
         }
         if (b.type === 'image') {
           return `<figure class="my-2">
@@ -2470,7 +1793,7 @@
           </figure>`;
         }
         if (b.type === 'embed') {
-          return `<div class="my-2">${renderMediaHtml(b.url, b.tweetSnapshot, `post_${post.id}_emb_${bIdx}`)}
+          return `<div class="my-2">${renderMediaHtml(b.url, b.tweetSnapshot)}
             ${b.caption ? `<div class="text-xs theme-sub mt-1">${b.caption}</div>` : ''}
           </div>`;
         }
@@ -2482,7 +1805,7 @@
         const qPost = postsData.find(p => p.id === post.quotedPostId);
         quotedCardHtml = buildInternalQuoteCardHtml(qPost, false);
       } else if (post.quotedExternalUrl) {
-        quotedCardHtml = renderMediaHtml(post.quotedExternalUrl, post.quotedExternalSnapshot, `post_${post.id}_quote`);
+        quotedCardHtml = renderMediaHtml(post.quotedExternalUrl, post.quotedExternalSnapshot);
       }
 
       const targetThreadId = post.parentId || post.id;
@@ -2525,13 +1848,13 @@
 
             ${post.title ? `<h3 class="font-bold text-base mb-1">${post.title}</h3>` : ''}
 
-            <div>
+            <div class="${shouldCollapse ? 'post-collapsed' : ''}">
               ${blocksHtml}
             </div>
 
-            ${hasLongTextInPost && isPostExpanded ? `
+            ${isLongPost ? `
               <button onclick="toggleExpandPost('${post.id}', event)" class="mt-1 text-xs font-bold theme-accent-text hover:underline block">
-                折りたたむ
+                ${shouldCollapse ? 'さらに表示' : '折りたたむ'}
               </button>
             ` : ''}
 
@@ -2606,7 +1929,6 @@
 
     function renderFeed() {
       const list = document.getElementById('feed-list');
-      if (!list) return;
       const query = document.getElementById('search-input').value.trim().toLowerCase();
       list.innerHTML = '';
 
@@ -2635,7 +1957,7 @@
         if (currentFilter === 'bookmark' && !threadPosts.some(tp => tp.bookmarked)) return false;
         if (currentFilter === 'media' && !threadPosts.some(tp => (tp.blocks || []).some(b => b.type !== 'text'))) return false;
         if (query) {
-          const allText = threadPosts.map(tp => (tp.title || '') + ' ' + (tp.blocks || []).map(b => b.content || htmlToPlainText(b.html || '') || b.caption || '').join(' ')).join(' ').toLowerCase();
+          const allText = threadPosts.map(tp => (tp.title || '') + ' ' + (tp.blocks || []).map(b => b.content || b.caption || '').join(' ')).join(' ').toLowerCase();
           return allText.includes(query);
         }
         return true;
@@ -2687,7 +2009,7 @@
       quotedExternalUrl = post.quotedExternalUrl || null;
       document.getElementById('post-title').value = post.title || '';
       if (post.category) document.getElementById('post-category').value = post.category;
-      editorBlocks = JSON.parse(JSON.stringify(post.blocks || [{ id: crypto.randomUUID(), type: 'text', content: '', html: '' }]));
+      editorBlocks = JSON.parse(JSON.stringify(post.blocks || [{ id: crypto.randomUUID(), type: 'text', content: '' }]));
       document.getElementById('modal-mode-label').textContent = 'ポストを編集';
       document.getElementById('submit-btn').textContent = '更新する';
       document.getElementById('reply-parent-info').classList.add('hidden');
@@ -2706,7 +2028,7 @@
     updateNavigationUI();
     renderCategories();
     renderEditor();
-    safeCreateIcons();
+    lucide.createIcons();
   </script>
 </body>
 </html>
