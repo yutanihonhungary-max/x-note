@@ -1228,12 +1228,12 @@
       if (media.photos && media.photos.length > 0) {
         const cols = media.photos.length > 1 ? 'grid-cols-2' : 'grid-cols-1';
         html += `<div class="grid ${cols} gap-1.5 my-2 rounded-xl overflow-hidden border theme-border">
-          ${media.photos.map(p => `<img src="${p.url}" onclick="event.stopPropagation(); openLightbox('${p.url}')" class="w-full max-h-72 object-cover cursor-zoom-in">`).join('')}
+          ${media.photos.map(p => `<img src="${p.url}" referrerpolicy="no-referrer" onclick="event.stopPropagation(); openLightbox('${p.url}')" class="w-full max-h-72 object-cover cursor-zoom-in">`).join('')}
         </div>`;
       }
       if (media.videos && media.videos.length > 0) {
         html += media.videos.map(v => `
-          <video src="${v.url}" poster="${v.thumbnail_url || ''}" controls playsinline onclick="event.stopPropagation()" class="w-full max-h-80 rounded-xl my-2 bg-black border theme-border"></video>
+          <video src="${v.url}" poster="${v.thumbnail_url || ''}" referrerpolicy="no-referrer" controls playsinline preload="metadata" onclick="event.stopPropagation()" class="w-full max-h-80 rounded-xl my-2 bg-black border theme-border"></video>
         `).join('');
       }
       return html;
@@ -1672,8 +1672,8 @@
           <iframe src="https://www.youtube.com/embed/${ytMatch[1]}" class="w-full h-full" allowfullscreen></iframe>
         </div>`;
       }
-      if (/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(safeUrl)) {
-        return `<video src="${safeUrl}" controls onclick="event.stopPropagation()" class="w-full max-h-96 rounded-xl my-2 bg-black"></video>`;
+      if (/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(safeUrl) || safeUrl.includes('video.twimg.com')) {
+        return `<video src="${safeUrl}" referrerpolicy="no-referrer" controls playsinline preload="metadata" onclick="event.stopPropagation()" class="w-full max-h-96 rounded-xl my-2 bg-black"></video>`;
       }
       if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|avif)(\?.*)?$/i.test(safeUrl) || safeUrl.startsWith('data:image/')) {
         return `<img src="${safeUrl}" onclick="event.stopPropagation(); openLightbox('${safeUrl}')" class="max-h-96 rounded-xl object-contain my-2 cursor-zoom-in">`;
