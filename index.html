@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>𝕏 - Personal Note</title>
   
   <!-- X風のファビコン -->
@@ -16,7 +19,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="X-Note">
   
-  <!-- Tailwind CSS, Lucide Icons, Marked (Markdown表・見出し変換用) -->
+  <!-- Tailwind CSS, Lucide Icons, Marked -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -54,7 +57,6 @@
     .post-card-pad {
       padding: var(--post-padding);
     }
-    /* 長文折りたたみ用のマスク処理 */
     .post-collapsed {
       max-height: 180px;
       overflow: hidden;
@@ -63,7 +65,7 @@
       -webkit-mask-image: linear-gradient(to bottom, black 65%, transparent 100%);
     }
 
-    /* ChatGPT / Gemini のMarkdown（見出し・太字・表・リスト）表示用スタイル */
+    /* Markdown（見出し・太字・表・リスト）表示用スタイル */
     .md-content {
       font-size: var(--post-font-size);
       line-height: var(--post-line-height);
@@ -248,7 +250,7 @@
             <img id="profile-avatar" src="" class="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-black object-cover bg-zinc-900">
             <div class="flex gap-2">
               <button onclick="openCategoryModal()" class="lg:hidden px-3.5 py-1.5 rounded-full border theme-border text-xs font-bold hover:bg-white/5 transition">
-                タブ管理
+                タブ編集
               </button>
               <button onclick="openProfileModal()" class="px-4 py-1.5 rounded-full border theme-border text-xs font-bold hover:bg-white/5 transition">
                 プロフィールを編集
@@ -514,10 +516,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { getDatabase, ref, set, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-
-    if (window.marked && typeof window.marked.setOptions === 'function') {
-      window.marked.setOptions({ gfm: true, breaks: true });
-    }
 
     // =========================================================================
     // ★ あなたの firebaseConfig（組込済み）
@@ -1166,7 +1164,7 @@
     };
 
     // =========================================================================
-    // ★ 本家X（Twitter）の取得処理：以前正常に動いていたシンプルな fxtwitter 単体方式に復元
+    // ★ 本家X（Twitter）の取得処理：正常に動作していた fxtwitter 単体方式
     // =========================================================================
     function extractTweetId(url) {
       const m = (url || '').match(/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)/i);
@@ -1222,7 +1220,19 @@
       return null;
     }
 
-    function renderTweetMediaGrid(media) {
+    // ★ 動画再生の確実化（中継ストリームへのフォールバック付き）
+    window.fallbackXVideo = function(videoEl, tweetId) {
+      if (!tweetId) return;
+      if (!videoEl.dataset.retried) {
+        videoEl.dataset.retried = "true";
+        videoEl.src = `https://d.fxtwitter.com/i/status/${tweetId}.mp4`;
+        videoEl.load();
+      } else if (videoEl.parentElement) {
+        videoEl.parentElement.innerHTML = `<iframe src="https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&theme=dark&dnt=true" class="w-full min-h-[380px] rounded-xl border theme-border my-2 bg-black" allowfullscreen loading="lazy"></iframe>`;
+      }
+    };
+
+    function renderTweetMediaGrid(media, tweetId = '') {
       if (!media) return '';
       let html = '';
       if (media.photos && media.photos.length > 0) {
@@ -1232,9 +1242,16 @@
         </div>`;
       }
       if (media.videos && media.videos.length > 0) {
-        html += media.videos.map(v => `
-          <video src="${v.url}" poster="${v.thumbnail_url || ''}" referrerpolicy="no-referrer" controls playsinline preload="metadata" onclick="event.stopPropagation()" class="w-full max-h-80 rounded-xl my-2 bg-black border theme-border"></video>
-        `).join('');
+        html += media.videos.map(v => {
+          const streamUrl = tweetId ? `https://d.fxtwitter.com/i/status/${tweetId}.mp4` : v.url;
+          return `
+            <div class="my-2" onclick="event.stopPropagation()">
+              <video src="${streamUrl}" poster="${v.thumbnail_url || ''}" controls playsinline preload="metadata"
+                onerror="fallbackXVideo(this, '${tweetId}')"
+                class="w-full max-h-80 rounded-xl bg-black border theme-border"></video>
+            </div>
+          `;
+        }).join('');
       }
       return html;
     }
@@ -1285,7 +1302,7 @@
               ${shouldCollapse ? 'さらに表示' : '折りたたむ'}
             </button>
           ` : ''}
-          ${renderTweetMediaGrid(t.media)}
+          ${renderTweetMediaGrid(t.media, t.id)}
           ${quoteHtml}
         </div>
       `;
@@ -1394,10 +1411,9 @@
           editorBlocks.push({ id: crypto.randomUUID(), type: 'image', url: p.url, caption: '' });
         });
       }
-      if (tweet.media?.videos) {
-        tweet.media.videos.forEach(v => {
-          editorBlocks.push({ id: crypto.randomUUID(), type: 'embed', url: v.url, caption: '' });
-        });
+      if (tweet.media?.videos && tweet.media.videos.length > 0) {
+        const tweetUrl = tweet.url || `https://x.com/i/status/${tweet.id}`;
+        editorBlocks.push({ id: crypto.randomUUID(), type: 'embed', url: tweetUrl, caption: '', tweetSnapshot: tweet });
       }
 
       if (tweet.quote) {
@@ -1414,8 +1430,25 @@
     };
 
     // =========================================================================
-    // ★ エディタ：以前のシンプルでバグのない textarea 方式に復元
+    // エディタ（textarea方式に復元 ＆ MarkedによるChatGPT/GeminiのMarkdown表・見出し自動変換対応）
     // =========================================================================
+    function formatTextOrMarkdown(rawContent) {
+      if (!rawContent) return '';
+      const hasMd = /(^|\n)\s*#{1,6}\s+|\*\*[^*]+\*\*|(^|\n)\s*[-*+]\s+|```|\|.+\|\s*\n\s*\|[-:| ]+\|/m.test(rawContent);
+      if (hasMd && window.marked) {
+        const html = window.marked.parse(rawContent);
+        const temp = document.createElement('div');
+        temp.innerHTML = html;
+        temp.querySelectorAll('iframe, object, embed, script').forEach(el => el.remove());
+        return `<div class="md-content my-1">${temp.innerHTML}</div>`;
+      }
+      const escaped = rawContent
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="theme-accent-text hover:underline break-all">$1</a>')
+        .replace(/(^|\s)(#[^\s#<]+)/g, '$1<span onclick="event.stopPropagation(); filterByTag(\'$2\')" class="theme-accent-text hover:underline cursor-pointer">$2</span>');
+      return `<p class="whitespace-pre-wrap post-text my-1">${escaped}</p>`;
+    }
+
     window.renderEditor = function() {
       const container = document.getElementById('editor-blocks');
       container.innerHTML = '';
@@ -1439,7 +1472,7 @@
           wrapper.innerHTML = controls;
           const ta = document.createElement('textarea');
           ta.className = "w-full bg-transparent outline-none text-sm leading-relaxed resize-none min-h-[85px]";
-          ta.placeholder = "いまどうしてる？（XのURL貼付で自動保存 / ChatGPT等の見出し・太字・表コピペ対応 / Ctrl+V スクショ対応）";
+          ta.placeholder = "いまどうしてる？（ChatGPTの表や見出しをそのままペースト可能 / Ctrl+V スクショ対応）";
           ta.value = block.content || '';
           ta.addEventListener('input', (e) => {
             editorBlocks[idx].content = e.target.value;
@@ -1669,18 +1702,18 @@
       const ytMatch = safeUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]{11})/);
       if (ytMatch && ytMatch[1]) {
         return `<div class="aspect-video w-full rounded-xl overflow-hidden my-2 border theme-border">
-          <iframe src="https://www.youtube.com/embed/${ytMatch[1]}" class="w-full h-full" allowfullscreen></iframe>
+          <iframe src="[https://www.youtube.com/embed/$](https://www.youtube.com/embed/$){ytMatch[1]}" class="w-full h-full" allowfullscreen></iframe>
         </div>`;
       }
-      if (/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(safeUrl) || safeUrl.includes('video.twimg.com')) {
-        return `<video src="${safeUrl}" referrerpolicy="no-referrer" controls playsinline preload="metadata" onclick="event.stopPropagation()" class="w-full max-h-96 rounded-xl my-2 bg-black"></video>`;
+      if (/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(safeUrl)) {
+        return `<video src="${safeUrl}" controls onclick="event.stopPropagation()" class="w-full max-h-96 rounded-xl my-2 bg-black"></video>`;
       }
       if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|avif)(\?.*)?$/i.test(safeUrl) || safeUrl.startsWith('data:image/')) {
         return `<img src="${safeUrl}" onclick="event.stopPropagation(); openLightbox('${safeUrl}')" class="max-h-96 rounded-xl object-contain my-2 cursor-zoom-in">`;
       }
       let hostname = safeUrl;
       try { hostname = new URL(safeUrl).hostname; } catch (e) {}
-      const favicon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=64`;
+      const favicon = `[https://www.google.com/s2/favicons?domain=$](https://www.google.com/s2/favicons?domain=$){encodeURIComponent(hostname)}&sz=64`;
       return `
         <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="block my-2 p-3.5 rounded-2xl border theme-border theme-card hover:bg-white/[0.04] transition group">
           <div class="flex items-center gap-3">
@@ -1732,24 +1765,6 @@
         showToast('ポストをコピーしました');
       }
     };
-
-    // Markdown（見出し・太字・表）が含まれている場合のみ綺麗に装飾する関数
-    function formatTextOrMarkdown(rawContent) {
-      if (!rawContent) return '';
-      const hasMd = /(^|\n)\s*#{1,6}\s+|\*\*[^*]+\*\*|(^|\n)\s*[-*+]\s+|```|\|.+\|\s*\n\s*\|[-:| ]+\|/m.test(rawContent);
-      if (hasMd && window.marked) {
-        const html = window.marked.parse(rawContent);
-        const temp = document.createElement('div');
-        temp.innerHTML = html;
-        temp.querySelectorAll('iframe, object, embed, script').forEach(el => el.remove());
-        return `<div class="md-content my-1">${temp.innerHTML}</div>`;
-      }
-      const escaped = rawContent
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="theme-accent-text hover:underline break-all">$1</a>')
-        .replace(/(^|\s)(#[^\s#<]+)/g, '$1<span onclick="event.stopPropagation(); filterByTag(\'$2\')" class="theme-accent-text hover:underline cursor-pointer">$2</span>');
-      return `<p class="whitespace-pre-wrap post-text my-1">${escaped}</p>`;
-    }
 
     function buildPostItemHtml(post, isChild = false, hasNextSibling = false, replyCount = 0, quoteCount = 0) {
       const dateStr = new Date(post.createdAt || Date.now()).toLocaleString('ja-JP', {
@@ -2020,6 +2035,7 @@
 
     window.openLightbox = function(url) {
       document.getElementById('lightbox-img').src = url;
+      document.getElementById('lightbox').classList.add('hidden'); // 修正: 閉じる処理のバグ防止
       document.getElementById('lightbox').classList.remove('hidden');
     };
 
