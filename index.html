@@ -596,12 +596,19 @@
     }
 
     // =========================================================================
-    // ★ 1. YouTubeのURLから11桁の動画IDを取り出す関数
+    // ★ 1. YouTubeのURLから11桁の動画IDを取り出す関数（パラメータ・全角文字混入対応）
     // =========================================================================
     function extractYouTubeId(url) {
       if (!url || typeof url !== 'string') return null;
-      const m = url.match(/(?:youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/|live\/|v\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
-      return m ? m[1] : null;
+      // 1. まず v=XXXXXXXXXXX の形式を探す（パラメータの順番に関係なく抽出）
+      const vParam = url.match(/[?&]v=([A-Za-z0-9_-]{11})/);
+      if (vParam) return vParam[1];
+
+      // 2. youtu.be/XXXXXXXXXXX や /shorts/XXXXXXXXXXX, /embed/XXXXXXXXXXX, /live/XXXXXXXXXXX を探す
+      const pathMatch = url.match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:embed\/|shorts\/|live\/|v\/))([A-Za-z0-9_-]{11})/);
+      if (pathMatch) return pathMatch[1];
+
+      return null;
     }
 
     // =========================================================================
