@@ -1786,8 +1786,21 @@
     // ★ 4. メディアURLの描画（以前確実に動いていたシンプルな構造に固定）
     // =========================================================================
     function renderMediaHtml(url, savedSnapshot = null) {
-      const safeUrl = (url || '').trim();
+      let safeUrl = String(url || '').trim();
       if (!safeUrl) return '';
+
+      // ★ 過去のバグでデータベースに "$1" や "<iframe..." が混入していた場合、404を出さずに修復・除去する
+      if (safeUrl.includes('<iframe')) {
+        const srcMatch = safeUrl.match(/src=["']([^"']+)["']/i);
+        if (srcMatch && srcMatch[1] && /^https?:\/\//i.test(srcMatch[1])) {
+          safeUrl = srcMatch[1];
+        } else {
+          return ''; // 壊れた404 iframeは表示しない
+        }
+      }
+      if (!/^https?:\/\//i.test(safeUrl) && !safeUrl.startsWith('data:image/')) {
+        return ''; // 相対パス（404の原因）は一切描画しない
+      }
 
       // 1. 本家X（Twitter）
       const tweetId = extractTweetId(safeUrl);
@@ -1803,15 +1816,27 @@
         return `<div data-tweet-id="${tweetId}" data-tweet-url="${safeUrl}" class="my-2 p-4 rounded-2xl border theme-border theme-card text-xs theme-sub animate-pulse">𝕏 ポスト＆引用データを取得中...</div>`;
       }
 
-      // 2. YouTube（以前正常に動いていた最もシンプルな iframe に復元）
+      // 2. YouTube（YouTube埋め込みエラー153を防ぐため no-referrer を絶対につけない＆タップで開けるサムネイルも併設）
       const ytId = extractYouTubeId(safeUrl);
       if (ytId) {
-        return `<div class="aspect-video w-full rounded-xl overflow-hidden my-2 border theme-border bg-black" onclick="event.stopPropagation()">
-          <iframe src="[https://www.youtube.com/embed/$](https://www.youtube.com/embed/$){ytId}" class="w-full h-full border-0" allowfullscreen></iframe>
-        </div>`;
+        return `
+          <div class="my-2 rounded-2xl overflow-hidden border theme-border bg-black" onclick="event.stopPropagation()">
+            <div class="aspect-video w-full">
+              <iframe src="https://www.youtube-nocookie.com/embed/${ytId}"
+                class="w-full h-full border-0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen></iframe>
+            </div>
+            <a href="https://www.youtube.com/watch?v=${ytId}" target="_blank" rel="noopener noreferrer"
+               class="px-3 py-2 bg-zinc-900 hover:bg-zinc-800 border-t theme-border flex items-center justify-between text-xs text-sky-400 font-bold transition">
+              <span>▶ YouTubeプレイヤー（再生制限がある場合はここをタップ）</span>
+              <span>YouTubeで開く ↗</span>
+            </a>
+          </div>
+        `;
       }
 
-      // 3. 動画ファイル直リンク（Xの直リンク video.twimg.com も含む）
+      // 3. 動画ファイル直リンク
       if (/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(safeUrl) || safeUrl.includes('video.twimg.com')) {
         return `<video src="${safeUrl}" controls playsinline preload="metadata" onclick="event.stopPropagation()" class="w-full max-h-96 rounded-xl my-2 bg-black border theme-border"></video>`;
       }
@@ -1824,7 +1849,7 @@
       // 5. 一般のWebサイトURL
       let hostname = safeUrl;
       try { hostname = new URL(safeUrl).hostname; } catch (e) {}
-      const favicon = `[https://www.google.com/s2/favicons?domain=$](https://www.google.com/s2/favicons?domain=$){encodeURIComponent(hostname)}&sz=64`;
+      const favicon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=64`;
       return `
         <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="block my-2 p-3.5 rounded-2xl border theme-border theme-card hover:bg-white/[0.04] transition group">
           <div class="flex items-center gap-3">
