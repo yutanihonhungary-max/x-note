@@ -23,6 +23,11 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- ★ KaTeX & mhchem（LaTeX数式・化学式レンダリング用） -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/mhchem.min.js"></script>
   
   <style>
     :root {
@@ -58,14 +63,14 @@
       padding: var(--post-padding);
     }
     .post-collapsed {
-      max-height: 180px;
+      max-height: 185px;
       overflow: hidden;
       position: relative;
       mask-image: linear-gradient(to bottom, black 65%, transparent 100%);
       -webkit-mask-image: linear-gradient(to bottom, black 65%, transparent 100%);
     }
 
-    /* Markdown（見出し・太字・表・リスト）表示用スタイル */
+    /* Markdown & LaTeX 表示用スタイル */
     .md-content {
       font-size: var(--post-font-size);
       line-height: var(--post-line-height);
@@ -88,6 +93,7 @@
     .md-content th { background: rgba(128,128,128,0.15); font-weight: 800; }
     .md-content blockquote { border-left: 3px solid var(--accent); padding-left: 0.8em; margin: 0.5em 0; color: var(--text-sub); }
     .md-content a { color: var(--accent); text-decoration: underline; }
+    .katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.3em 0; margin: 0.5em 0 !important; }
 
     @keyframes highlightPulse {
       0% { background-color: rgba(29, 155, 240, 0.28); }
@@ -131,7 +137,7 @@
         𝕏
       </div>
       <h1 class="text-xl font-bold text-white mb-2">X-Note Personal</h1>
-      <p class="text-xs text-gray-400 mb-6">自分専用の長文・スレッド・引用・メディア同期ノート</p>
+      <p class="text-xs text-gray-400 mb-6">自分専用の長文・スレッド・数式/化学式・メディア同期ノート</p>
       <button id="login-btn" class="w-full py-3 px-4 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition flex items-center justify-center gap-2">
         <i data-lucide="log-in" class="w-4 h-4"></i>
         Googleでログイン
@@ -146,8 +152,9 @@
     <!-- 左サイドバー（PC用） -->
     <aside class="hidden md:flex flex-col w-60 border-r theme-border p-4 sticky top-0 h-screen justify-between shrink-0">
       <div class="space-y-1">
-        <div class="px-3 py-2 text-3xl font-black tracking-tighter flex items-center gap-2">
+        <div class="px-3 py-2 text-3xl font-black tracking-tighter flex items-center justify-between">
           <span>𝕏</span>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v4.0 LaTeX</span>
         </div>
         <button id="nav-btn-all" onclick="setFilter('all')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 transition">
           <i data-lucide="home" class="w-5 h-5"></i> <span>ホーム</span>
@@ -250,7 +257,7 @@
             <img id="profile-avatar" src="" class="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-black object-cover bg-zinc-900">
             <div class="flex gap-2">
               <button onclick="openCategoryModal()" class="lg:hidden px-3.5 py-1.5 rounded-full border theme-border text-xs font-bold hover:bg-white/5 transition">
-                タブ編集
+                タブ管理
               </button>
               <button onclick="openProfileModal()" class="px-4 py-1.5 rounded-full border theme-border text-xs font-bold hover:bg-white/5 transition">
                 プロフィールを編集
@@ -360,7 +367,7 @@
             <span>写真</span>
             <input id="photo-input" type="file" accept="image/*" multiple class="hidden">
           </label>
-          <button onclick="insertUrlBlock()" class="p-2 rounded-full hover:bg-white/10 theme-accent-text transition flex items-center gap-1 text-xs font-bold" title="Webサイト・YouTube・XのURLカードを挿入">
+          <button onclick="insertUrlBlock()" class="p-2 rounded-full hover:bg-white/10 theme-accent-text transition flex items-center gap-1 text-xs font-bold" title="YouTube・X・WebサイトのURLカードを挿入">
             <i data-lucide="link" class="w-4 h-4"></i>
             <span>動画/URL</span>
           </button>
@@ -378,7 +385,7 @@
           </button>
         </div>
         <div class="text-[11px] theme-sub">
-          <span id="char-count">0 文字</span> · <span class="hidden sm:inline">Ctrl+V 対応</span>
+          <span id="char-count">0 文字</span> · <span class="hidden sm:inline">LaTeX($数式$ / $\ce{H2O}$)・表・Ctrl+V対応</span>
         </div>
       </div>
     </div>
@@ -517,6 +524,10 @@
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { getDatabase, ref, set, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
+    if (window.marked && typeof window.marked.setOptions === 'function') {
+      window.marked.setOptions({ gfm: true, breaks: true });
+    }
+
     // =========================================================================
     // ★ あなたの firebaseConfig（組込済み）
     // =========================================================================
@@ -583,6 +594,106 @@
       setTimeout(() => t.classList.add('opacity-0'), 1900);
     }
 
+    // =========================================================================
+    // ★ 専用モジュール①：YouTube URLパーサー（どんなURL形式でも11桁IDを確実に抽出）
+    // =========================================================================
+    function extractYouTubeId(rawUrl) {
+      if (!rawUrl || typeof rawUrl !== 'string') return null;
+      const clean = rawUrl.trim();
+      try {
+        const u = new URL(clean);
+        const host = u.hostname.replace(/^(www\.|m\.)/i, '').toLowerCase();
+        let vid = null;
+        if (host === 'youtu.be') {
+          vid = u.pathname.split('/').filter(Boolean)[0];
+        } else if (host.endsWith('youtube.com') || host.endsWith('youtube-nocookie.com')) {
+          if (u.searchParams.get('v')) {
+            vid = u.searchParams.get('v');
+          } else {
+            const parts = u.pathname.split('/').filter(Boolean);
+            if (['embed', 'shorts', 'live', 'v'].includes(parts[0]) && parts[1]) {
+              vid = parts[1];
+            }
+          }
+        }
+        if (vid && /^[A-Za-z0-9_-]{11}$/.test(vid)) return vid;
+      } catch (e) {}
+
+      const m = clean.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/|live\/|v\/))([A-Za-z0-9_-]{11})/);
+      return m ? m[1] : null;
+    }
+
+    // =========================================================================
+    // ★ 専用モジュール②：LaTeX（数式・化学式 \ce{}）＋ Markdown 安全統合パーサー
+    // =========================================================================
+    function renderMathAndMarkdown(rawContent) {
+      if (!rawContent) return '';
+
+      // ステップ1: 数式・化学式ブロックを先に抽出してKaTeXでHTML化し、プレースホルダーに退避する（Markdownの_や*との干渉を100%防ぐ）
+      const mathPlaceholders = [];
+      const saveMath = (tex, displayMode) => {
+        const id = `@@MATH_TOKEN_${mathPlaceholders.length}@@`;
+        let rendered = tex;
+        if (window.katex) {
+          try {
+            rendered = window.katex.renderToString(tex.trim(), {
+              displayMode,
+              throwOnError: false,
+              trust: true
+            });
+          } catch (e) {}
+        }
+        mathPlaceholders.push({ id, html: rendered });
+        return id;
+      };
+
+      let text = rawContent;
+
+      // 1) $$ ... $$ （ディスプレイ数式・化学反応式）
+      text = text.replace(/\$\$([\s\S]+?)\$\$/g, (_, tex) => saveMath(tex, true));
+      // 2) \[ ... \] （ディスプレイ数式）
+      text = text.replace(/\\\[([\s\S]+?)\\\]/g, (_, tex) => saveMath(tex, true));
+      // 3) \( ... \) （インライン数式）
+      text = text.replace(/\\\(([\s\S]+?)\\\)/g, (_, tex) => saveMath(tex, false));
+      // 4) $ ... $ （インライン数式・化学式）
+      text = text.replace(/\$([^\$\n]+?)\$/g, (_, tex) => saveMath(tex, false));
+      // 5) 裸の \ce{...} （$で囲まずに直接 \ce{H2O} と書いた場合も自動で化学式変換）
+      text = text.replace(/(\\ce\{[^}]+\})/g, (_, tex) => saveMath(tex, false));
+
+      // ステップ2: Markdown構文（見出し・太字・表・リスト・コード枠）が含まれるか判定
+      const hasMd = /(^|\n)\s*#{1,6}\s+|\*\*[^*]+\*\*|(^|\n)\s*[-*+]\s+|(^|\n)\s*\d+\.\s+|```|\|.+\|\s*\n\s*\|[-:| ]+\|/m.test(text);
+
+      let htmlOut = '';
+      if (hasMd && window.marked) {
+        const parsed = window.marked.parse(text);
+        const temp = document.createElement('div');
+        temp.innerHTML = parsed;
+        temp.querySelectorAll('iframe, object, embed, script').forEach(el => el.remove());
+        temp.querySelectorAll('a').forEach(a => {
+          a.setAttribute('target', '_blank');
+          a.setAttribute('rel', 'noopener noreferrer');
+          a.setAttribute('onclick', 'event.stopPropagation()');
+        });
+        htmlOut = `<div class="md-content my-1">${temp.innerHTML}</div>`;
+      } else {
+        const escaped = text
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="theme-accent-text hover:underline break-all">$1</a>')
+          .replace(/(^|\s)(#[^\s#<]+)/g, '$1<span onclick="event.stopPropagation(); filterByTag(\'$2\')" class="theme-accent-text hover:underline cursor-pointer">$2</span>');
+        htmlOut = `<div class="whitespace-pre-wrap post-text my-1">${escaped}</div>`;
+      }
+
+      // ステップ3: 退避していたKaTeXの数式・化学式HTMLを元に戻す
+      mathPlaceholders.forEach(item => {
+        htmlOut = htmlOut.split(item.id).join(item.html);
+      });
+
+      return htmlOut;
+    }
+
+    // =========================================================================
+    // ログイン・データ購読
+    // =========================================================================
     document.getElementById('login-btn').addEventListener('click', async () => {
       try { await signInWithPopup(auth, provider); }
       catch (err) {
@@ -692,7 +803,6 @@
       if (currentUser) set(ref(db, `users/${currentUser.uid}/settings`), themeSettings);
     };
 
-    // 右サイドバー（タブ管理）幅調整
     window.changeRightSidebarWidth = function(val, persist = false) {
       const w = Math.min(420, Math.max(160, Number(val) || 230));
       themeSettings.rightSidebarWidth = w;
@@ -730,7 +840,7 @@
       }
     });
 
-    // 複数ポスト選択 ＆ 一括コピー機能
+    // 複数ポスト選択 ＆ 一括コピー
     window.toggleSelectMode = function(forceState) {
       isSelectMode = typeof forceState === 'boolean' ? forceState : !isSelectMode;
       if (!isSelectMode) selectedPostIds.clear();
@@ -740,11 +850,8 @@
 
     window.togglePostSelection = function(postId, e) {
       if (e) e.stopPropagation();
-      if (selectedPostIds.has(postId)) {
-        selectedPostIds.delete(postId);
-      } else {
-        selectedPostIds.add(postId);
-      }
+      if (selectedPostIds.has(postId)) selectedPostIds.delete(postId);
+      else selectedPostIds.add(postId);
       updateBulkUI();
       renderFeed();
     };
@@ -753,11 +860,8 @@
       const visibleEls = document.querySelectorAll('[data-selectable-post-id]');
       const allIds = Array.from(visibleEls).map(el => el.getAttribute('data-selectable-post-id'));
       const allSelected = allIds.length > 0 && allIds.every(id => selectedPostIds.has(id));
-      if (allSelected) {
-        allIds.forEach(id => selectedPostIds.delete(id));
-      } else {
-        allIds.forEach(id => selectedPostIds.add(id));
-      }
+      if (allSelected) allIds.forEach(id => selectedPostIds.delete(id));
+      else allIds.forEach(id => selectedPostIds.add(id));
       updateBulkUI();
       renderFeed();
     };
@@ -1164,7 +1268,7 @@
     };
 
     // =========================================================================
-    // ★ 本家X（Twitter）の取得処理：正常に動作していた fxtwitter 単体方式
+    // ★ 専用モジュール③：本家X（Twitter）の取得＆動画再生処理
     // =========================================================================
     function extractTweetId(url) {
       const m = (url || '').match(/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)/i);
@@ -1182,7 +1286,7 @@
 
       return {
         id: String(t.id || ''),
-        url: t.url || `https://x.com/${t.author?.screen_name || 'i'}/status/${t.id}`,
+        url: t.url || `[https://x.com/$](https://x.com/$){t.author?.screen_name || 'i'}/status/${t.id}`,
         text: fullText,
         created_timestamp: t.created_timestamp || null,
         author: {
@@ -1199,7 +1303,7 @@
     async function fetchTweetData(tweetId) {
       if (tweetCache[tweetId]) return tweetCache[tweetId];
       try {
-        const res = await fetch(`https://api.fxtwitter.com/status/${tweetId}`);
+        const res = await fetch(`[https://api.fxtwitter.com/status/$](https://api.fxtwitter.com/status/$){tweetId}`);
         if (!res.ok) throw new Error('Fetch failed');
         const data = await res.json();
         if (data && data.tweet) {
@@ -1220,15 +1324,14 @@
       return null;
     }
 
-    // ★ 動画再生の確実化（中継ストリームへのフォールバック付き）
     window.fallbackXVideo = function(videoEl, tweetId) {
       if (!tweetId) return;
       if (!videoEl.dataset.retried) {
         videoEl.dataset.retried = "true";
-        videoEl.src = `https://d.fxtwitter.com/i/status/${tweetId}.mp4`;
+        videoEl.src = `[https://d.fxtwitter.com/i/status/$](https://d.fxtwitter.com/i/status/$){tweetId}.mp4`;
         videoEl.load();
       } else if (videoEl.parentElement) {
-        videoEl.parentElement.innerHTML = `<iframe src="https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&theme=dark&dnt=true" class="w-full min-h-[380px] rounded-xl border theme-border my-2 bg-black" allowfullscreen loading="lazy"></iframe>`;
+        videoEl.parentElement.innerHTML = `<iframe src="[https://platform.twitter.com/embed/Tweet.html?id=$](https://platform.twitter.com/embed/Tweet.html?id=$){tweetId}&theme=dark&dnt=true" class="w-full min-h-[380px] rounded-xl border theme-border my-2 bg-black" allowfullscreen loading="lazy"></iframe>`;
       }
     };
 
@@ -1243,7 +1346,7 @@
       }
       if (media.videos && media.videos.length > 0) {
         html += media.videos.map(v => {
-          const streamUrl = tweetId ? `https://d.fxtwitter.com/i/status/${tweetId}.mp4` : v.url;
+          const streamUrl = tweetId ? `[https://d.fxtwitter.com/i/status/$](https://d.fxtwitter.com/i/status/$){tweetId}.mp4` : v.url;
           return `
             <div class="my-2" onclick="event.stopPropagation()">
               <video src="${streamUrl}" poster="${v.thumbnail_url || ''}" controls playsinline preload="metadata"
@@ -1293,7 +1396,7 @@
             </div>
             <div class="flex items-center gap-1 shrink-0">
               <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">保存済</span>
-              <a href="${t.url || `https://x.com/i/status/${t.id}`}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="text-[11px] theme-sub hover:text-white px-2 py-0.5 rounded-full border theme-border" title="本家Xで開く">𝕏 ↗</a>
+              <a href="${t.url || `[https://x.com/i/status/$](https://x.com/i/status/$){t.id}`}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="text-[11px] theme-sub hover:text-white px-2 py-0.5 rounded-full border theme-border" title="本家Xで開く">𝕏 ↗</a>
             </div>
           </div>
           <div class="whitespace-pre-wrap post-text leading-relaxed ${shouldCollapse ? 'post-collapsed' : ''}">${escapedText}</div>
@@ -1321,9 +1424,6 @@
         .map(b => b.content || '')
         .join('\n');
 
-      const escaped = textSnippet
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
       const firstImage = (qPost.blocks || []).find(b => b.type === 'image');
 
       return `
@@ -1338,7 +1438,7 @@
             </div>
           </div>
           ${qPost.title ? `<div class="font-bold text-sm mb-1">${qPost.title}</div>` : ''}
-          <div class="whitespace-pre-wrap text-sm leading-relaxed line-clamp-4">${escaped}</div>
+          <div class="line-clamp-4">${renderMathAndMarkdown(textSnippet)}</div>
           ${firstImage ? `<img src="${firstImage.url}" onclick="event.stopPropagation(); openLightbox('${firstImage.url}')" class="mt-2 max-h-56 rounded-xl border theme-border object-cover">` : ''}
         </div>
       `;
@@ -1412,12 +1512,12 @@
         });
       }
       if (tweet.media?.videos && tweet.media.videos.length > 0) {
-        const tweetUrl = tweet.url || `https://x.com/i/status/${tweet.id}`;
+        const tweetUrl = tweet.url || `[https://x.com/i/status/$](https://x.com/i/status/$){tweet.id}`;
         editorBlocks.push({ id: crypto.randomUUID(), type: 'embed', url: tweetUrl, caption: '', tweetSnapshot: tweet });
       }
 
       if (tweet.quote) {
-        const quoteUrl = tweet.quote.url || `https://x.com/${tweet.quote.author?.screen_name || 'i'}/status/${tweet.quote.id}`;
+        const quoteUrl = tweet.quote.url || `[https://x.com/$](https://x.com/$){tweet.quote.author?.screen_name || 'i'}/status/${tweet.quote.id}`;
         tweetCache[tweet.quote.id] = tweet.quote;
         quotedExternalUrl = quoteUrl;
         renderQuotePreviewInModal();
@@ -1430,25 +1530,8 @@
     };
 
     // =========================================================================
-    // エディタ（textarea方式に復元 ＆ MarkedによるChatGPT/GeminiのMarkdown表・見出し自動変換対応）
+    // エディタ描画
     // =========================================================================
-    function formatTextOrMarkdown(rawContent) {
-      if (!rawContent) return '';
-      const hasMd = /(^|\n)\s*#{1,6}\s+|\*\*[^*]+\*\*|(^|\n)\s*[-*+]\s+|```|\|.+\|\s*\n\s*\|[-:| ]+\|/m.test(rawContent);
-      if (hasMd && window.marked) {
-        const html = window.marked.parse(rawContent);
-        const temp = document.createElement('div');
-        temp.innerHTML = html;
-        temp.querySelectorAll('iframe, object, embed, script').forEach(el => el.remove());
-        return `<div class="md-content my-1">${temp.innerHTML}</div>`;
-      }
-      const escaped = rawContent
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="theme-accent-text hover:underline break-all">$1</a>')
-        .replace(/(^|\s)(#[^\s#<]+)/g, '$1<span onclick="event.stopPropagation(); filterByTag(\'$2\')" class="theme-accent-text hover:underline cursor-pointer">$2</span>');
-      return `<p class="whitespace-pre-wrap post-text my-1">${escaped}</p>`;
-    }
-
     window.renderEditor = function() {
       const container = document.getElementById('editor-blocks');
       container.innerHTML = '';
@@ -1459,7 +1542,7 @@
 
         const controls = `
           <div class="flex items-center justify-between text-[11px] theme-sub mb-1">
-            <span>${block.type === 'text' ? 'テキスト段落' : block.type === 'image' ? '写真' : '動画 / Webリンク / 𝕏引用'}</span>
+            <span>${block.type === 'text' ? 'テキスト段落（LaTeX・化学式・Markdown表対応）' : block.type === 'image' ? '写真' : '動画 / Webリンク / 𝕏引用'}</span>
             <div class="flex items-center gap-1">
               <button onclick="moveBlock(${idx}, -1)" class="px-1.5 py-0.5 hover:bg-white/10 rounded">↑</button>
               <button onclick="moveBlock(${idx}, 1)" class="px-1.5 py-0.5 hover:bg-white/10 rounded">↓</button>
@@ -1472,7 +1555,7 @@
           wrapper.innerHTML = controls;
           const ta = document.createElement('textarea');
           ta.className = "w-full bg-transparent outline-none text-sm leading-relaxed resize-none min-h-[85px]";
-          ta.placeholder = "いまどうしてる？（ChatGPTの表や見出しをそのままペースト可能 / Ctrl+V スクショ対応）";
+          ta.placeholder = "いまどうしてる？（YouTubeやXのURL直貼り / $E=mc^2$ や $\\ce{H2O}$ の化学式 / ChatGPTの表コピペ対応）";
           ta.value = block.content || '';
           ta.addEventListener('input', (e) => {
             editorBlocks[idx].content = e.target.value;
@@ -1586,7 +1669,7 @@
     });
 
     window.insertUrlBlock = async function() {
-      const url = prompt("挿入したいURL（本家XのツイートURL・Webサイト・YouTube・動画mp4・画像URL）を入力してください:");
+      const url = prompt("挿入したいURL（YouTube・本家XのツイートURL・Webサイト・動画mp4・画像URL）を入力してください:");
       if (!url || !url.trim()) return;
       let formatted = url.trim();
       if (!/^https?:\/\//i.test(formatted) && !formatted.startsWith('data:')) {
@@ -1685,8 +1768,14 @@
       closePostModal();
     };
 
+    // =========================================================================
+    // ★ メディアURLの描画（X・YouTube・動画・画像・一般Webサイト）
+    // =========================================================================
     function renderMediaHtml(url, savedSnapshot = null) {
       const safeUrl = (url || '').trim();
+      if (!safeUrl) return '';
+
+      // 1. 本家X（Twitter）
       const tweetId = extractTweetId(safeUrl);
       if (tweetId) {
         if (savedSnapshot) {
@@ -1697,20 +1786,40 @@
           return buildNativeTweetCardHtml(tweetCache[tweetId], false);
         }
         setTimeout(() => window.hydrateTweetCards && window.hydrateTweetCards(), 10);
-        return `<div data-tweet-id="${tweetId}" data-tweet-url="${safeUrl}" class="my-2 p-4 rounded-2xl border theme-border theme-card text-xs theme-sub animate-pulse">𝕏 ポスト＆引用データを取得・アーカイブ保存中...</div>`;
+        return `<div data-tweet-id="${tweetId}" data-tweet-url="${safeUrl}" class="my-2 p-4 rounded-2xl border theme-border theme-card text-xs theme-sub animate-pulse">𝕏 ポスト＆引用データを取得中...</div>`;
       }
-      const ytMatch = safeUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]{11})/);
-      if (ytMatch && ytMatch[1]) {
-        return `<div class="aspect-video w-full rounded-xl overflow-hidden my-2 border theme-border">
-          <iframe src="[https://www.youtube.com/embed/$](https://www.youtube.com/embed/$){ytMatch[1]}" class="w-full h-full" allowfullscreen></iframe>
-        </div>`;
+
+      // 2. YouTube（専用パーサー extractYouTubeId でどんな形式のURLも確実に再生）
+      const ytId = extractYouTubeId(safeUrl);
+      if (ytId) {
+        return `
+          <div class="my-2 rounded-2xl overflow-hidden border theme-border bg-black" onclick="event.stopPropagation()">
+            <div class="aspect-video w-full">
+              <iframe src="[https://www.youtube.com/embed/$](https://www.youtube.com/embed/$){ytId}"
+                class="w-full h-full border-0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerpolicy="strict-origin-when-cross-origin"
+                allowfullscreen loading="lazy"></iframe>
+            </div>
+            <div class="px-3 py-1.5 bg-zinc-950 border-t theme-border flex items-center justify-between text-[11px] theme-sub">
+              <span>▶ YouTube</span>
+              <a href="[https://www.youtube.com/watch?v=$](https://www.youtube.com/watch?v=$){ytId}" target="_blank" rel="noopener noreferrer" class="text-sky-400 hover:underline font-bold">YouTubeで直接開く ↗</a>
+            </div>
+          </div>
+        `;
       }
-      if (/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(safeUrl)) {
-        return `<video src="${safeUrl}" controls onclick="event.stopPropagation()" class="w-full max-h-96 rounded-xl my-2 bg-black"></video>`;
+
+      // 3. 動画ファイル直リンク
+      if (/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(safeUrl) || safeUrl.includes('video.twimg.com') || safeUrl.includes('fxtwitter.com')) {
+        return `<video src="${safeUrl}" controls playsinline preload="metadata" onclick="event.stopPropagation()" class="w-full max-h-96 rounded-xl my-2 bg-black border theme-border"></video>`;
       }
+
+      // 4. 画像ファイル直リンク
       if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|avif)(\?.*)?$/i.test(safeUrl) || safeUrl.startsWith('data:image/')) {
         return `<img src="${safeUrl}" onclick="event.stopPropagation(); openLightbox('${safeUrl}')" class="max-h-96 rounded-xl object-contain my-2 cursor-zoom-in">`;
       }
+
+      // 5. 一般のWebサイトURL
       let hostname = safeUrl;
       try { hostname = new URL(safeUrl).hostname; } catch (e) {}
       const favicon = `[https://www.google.com/s2/favicons?domain=$](https://www.google.com/s2/favicons?domain=$){encodeURIComponent(hostname)}&sz=64`;
@@ -1732,11 +1841,8 @@
 
     window.toggleExpandPost = function(id, e) {
       if (e) e.stopPropagation();
-      if (expandedPostIds.has(id)) {
-        expandedPostIds.delete(id);
-      } else {
-        expandedPostIds.add(id);
-      }
+      if (expandedPostIds.has(id)) expandedPostIds.delete(id);
+      else expandedPostIds.add(id);
       renderFeed();
     };
 
@@ -1780,26 +1886,46 @@
         tweetCache[post.quotedExternalSnapshot.id] = post.quotedExternalSnapshot;
       }
 
-      const totalText = (post.blocks || [])
-        .filter(b => b.type === 'text')
-        .map(b => b.content || '')
-        .join('\n');
-      const lineCount = totalText.split('\n').length;
-      const isLongPost = totalText.length > 220 || lineCount > 6 || (post.blocks || []).length > 2;
-      const isExpanded = expandedPostIds.has(post.id);
-      const shouldCollapse = isLongPost && !isExpanded;
+      const isPostExpanded = expandedPostIds.has(post.id);
+      let hasLongTextInPost = false;
 
+      // ★ テキスト部分のみに折りたたみマスクを掛け、本文中に直接貼られたYouTubeやXのプレイヤーはマスクの外に展開する
       const blocksHtml = (post.blocks || []).map(b => {
         if (b.type === 'text') {
           const rawContent = b.content || '';
-          const inlineTweetMatches = [...rawContent.matchAll(/https?:\/\/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)[^\s<]*/gi)];
-          const inlineTweetCards = inlineTweetMatches.map(m => {
-            const tid = m[1];
-            const savedSnap = post.tweetSnapshots?.[tid] || tweetCache[tid] || null;
-            return renderMediaHtml(m[0], savedSnap);
+          const isThisBlockLong = rawContent.length > 220 || rawContent.split('\n').length > 6;
+          if (isThisBlockLong) hasLongTextInPost = true;
+          const collapseThisText = isThisBlockLong && !isPostExpanded;
+
+          // 本文中のURLから Xツイート と YouTube動画 を両方自動検出してプレイヤー展開
+          const urlMatches = rawContent.match(/https?:\/\/[^\s<"]+/gi) || [];
+          const seenMediaKeys = new Set();
+          const inlineMediaCards = urlMatches.map(u => {
+            const tid = extractTweetId(u);
+            if (tid && !seenMediaKeys.has(`tw_${tid}`)) {
+              seenMediaKeys.add(`tw_${tid}`);
+              const savedSnap = post.tweetSnapshots?.[tid] || tweetCache[tid] || null;
+              return renderMediaHtml(u, savedSnap);
+            }
+            const yid = extractYouTubeId(u);
+            if (yid && !seenMediaKeys.has(`yt_${yid}`)) {
+              seenMediaKeys.add(`yt_${yid}`);
+              return renderMediaHtml(u);
+            }
+            return '';
           }).join('');
 
-          return `${formatTextOrMarkdown(rawContent)}${inlineTweetCards}`;
+          return `
+            <div class="${collapseThisText ? 'post-collapsed' : ''}">
+              ${renderMathAndMarkdown(rawContent)}
+            </div>
+            ${collapseThisText ? `
+              <button onclick="toggleExpandPost('${post.id}', event)" class="mt-1 mb-1 text-xs font-bold theme-accent-text hover:underline block">
+                さらに表示
+              </button>
+            ` : ''}
+            ${inlineMediaCards}
+          `;
         }
         if (b.type === 'image') {
           return `<figure class="my-2">
@@ -1863,13 +1989,13 @@
 
             ${post.title ? `<h3 class="font-bold text-base mb-1">${post.title}</h3>` : ''}
 
-            <div class="${shouldCollapse ? 'post-collapsed' : ''}">
+            <div>
               ${blocksHtml}
             </div>
 
-            ${isLongPost ? `
+            ${hasLongTextInPost && isPostExpanded ? `
               <button onclick="toggleExpandPost('${post.id}', event)" class="mt-1 text-xs font-bold theme-accent-text hover:underline block">
-                ${shouldCollapse ? 'さらに表示' : '折りたたむ'}
+                折りたたむ
               </button>
             ` : ''}
 
@@ -2035,7 +2161,6 @@
 
     window.openLightbox = function(url) {
       document.getElementById('lightbox-img').src = url;
-      document.getElementById('lightbox').classList.add('hidden'); // 修正: 閉じる処理のバグ防止
       document.getElementById('lightbox').classList.remove('hidden');
     };
 
