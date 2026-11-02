@@ -155,7 +155,7 @@
       <div class="space-y-1">
         <div class="px-3 py-2 text-3xl font-black tracking-tighter flex items-center justify-between">
           <span>𝕏</span>
-          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v4.1</span>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v4.2</span>
         </div>
         <button id="nav-btn-all" onclick="setFilter('all')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 transition">
           <i data-lucide="home" class="w-5 h-5"></i> <span>ホーム</span>
@@ -596,15 +596,13 @@
     }
 
     // =========================================================================
-    // ★ 1. YouTubeのURLから11桁の動画IDを取り出す関数（パラメータ・全角文字混入対応）
+    // ★ 1. YouTubeのURLから確実に11桁の動画IDを取り出す関数
     // =========================================================================
     function extractYouTubeId(url) {
       if (!url || typeof url !== 'string') return null;
-      // 1. まず v=XXXXXXXXXXX の形式を探す（パラメータの順番に関係なく抽出）
       const vParam = url.match(/[?&]v=([A-Za-z0-9_-]{11})/);
       if (vParam) return vParam[1];
 
-      // 2. youtu.be/XXXXXXXXXXX や /shorts/XXXXXXXXXXX, /embed/XXXXXXXXXXX, /live/XXXXXXXXXXX を探す
       const pathMatch = url.match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:embed\/|shorts\/|live\/|v\/))([A-Za-z0-9_-]{11})/);
       if (pathMatch) return pathMatch[1];
 
@@ -694,12 +692,12 @@
       document.getElementById('app-screen').classList.remove('hidden');
       document.getElementById('user-email').textContent = user.email;
 
+      // ★ 無限ループ防止：スナップショット更新時はメモリキャッシュへの格納のみ行う
       onValue(ref(db, `users/${user.uid}/tweetSnapshots`), (snap) => {
         const val = snap.val() || {};
         Object.entries(val).forEach(([tid, tData]) => {
           tweetCache[tid] = tData;
         });
-        renderFeed();
       });
 
       onValue(ref(db, `users/${user.uid}/posts`), (snap) => {
@@ -1247,7 +1245,7 @@
     };
 
     // =========================================================================
-    // ★ 3. 本家X（Twitter）の動画取得＆期限切れ時の自動再取得再生
+    // ★ 3. 本家X（Twitter）の高速タイムアウト付き取得＆フォールバック
     // =========================================================================
     function extractTweetId(url) {
       const m = (url || '').match(/(?:twitter\.com|x\.com)\/[A-Za-z0-9_]+\/status\/(\d+)/i);
@@ -1259,7 +1257,6 @@
       const fullText = t.raw_text?.text || t.text || '';
       const photos = (t.media?.photos || []).map(p => ({ url: p.url }));
 
-      // 動画配列（media.videos および media.all）の両方から確実にMP4 URLを取得
       const rawVideos = [
         ...(t.media?.videos || []),
         ...((t.media?.all || []).filter(m => m.type === 'video' || m.type === 'gif' || m.type === 'animated_gif'))
@@ -1289,31 +1286,81 @@
       };
     }
 
+    async function fetchWithTimeout(url, ms = 4000) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), ms);
+      try {
+        const res = await fetch(url, { signal: ctrl.signal });
+        clearTimeout(timer);
+        return res;
+      } catch (e) {
+        clearTimeout(timer);
+        throw e;
+      }
+    }
+
     async function fetchTweetData(tweetId, forceRefresh = false) {
       if (!forceRefresh && tweetCache[tweetId]) return tweetCache[tweetId];
+
+      // 1. fxtwitter API
       try {
-        const res = await fetch(`[https://api.fxtwitter.com/status/$](https://api.fxtwitter.com/status/$){tweetId}`);
-        if (!res.ok) throw new Error('Fetch failed');
-        const data = await res.json();
-        if (data && data.tweet) {
-          const snapshot = sanitizeTweetSnapshot(data.tweet);
-          tweetCache[tweetId] = snapshot;
-          if (currentUser) {
-            set(ref(db, `users/${currentUser.uid}/tweetSnapshots/${tweetId}`), snapshot);
-            if (snapshot.quote && snapshot.quote.id) {
-              tweetCache[snapshot.quote.id] = snapshot.quote;
-              set(ref(db, `users/${currentUser.uid}/tweetSnapshots/${snapshot.quote.id}`), snapshot.quote);
+        const res = await fetchWithTimeout(`[https://api.fxtwitter.com/i/status/$](https://api.fxtwitter.com/i/status/$){tweetId}`, 4000);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.tweet) {
+            const snapshot = sanitizeTweetSnapshot(data.tweet);
+            tweetCache[tweetId] = snapshot;
+            if (currentUser) {
+              set(ref(db, `users/${currentUser.uid}/tweetSnapshots/${tweetId}`), snapshot);
+              if (snapshot.quote && snapshot.quote.id) {
+                tweetCache[snapshot.quote.id] = snapshot.quote;
+                set(ref(db, `users/${currentUser.uid}/tweetSnapshots/${snapshot.quote.id}`), snapshot.quote);
+              }
             }
+            return snapshot;
           }
-          return snapshot;
         }
       } catch (e) {
-        console.error('Tweet fetch error:', e);
+        console.warn('fxtwitter failed, trying vxtwitter...', e);
       }
+
+      // 2. vxtwitter API（予備）
+      try {
+        const res2 = await fetchWithTimeout(`[https://api.vxtwitter.com/Twitter/status/$](https://api.vxtwitter.com/Twitter/status/$){tweetId}`, 4000);
+        if (res2.ok) {
+          const d = await res2.json();
+          if (d && (d.tweetID || d.text)) {
+            const mapped = {
+              id: String(d.tweetID || tweetId),
+              url: d.tweetURL || `[https://x.com/$](https://x.com/$){d.user_screen_name || 'i'}/status/${tweetId}`,
+              text: d.text || '',
+              created_timestamp: d.date_epoch || null,
+              author: {
+                name: d.user_name || 'X User',
+                screen_name: d.user_screen_name || 'user',
+                avatar_url: d.user_profile_image_url || DEFAULT_AVATAR
+              },
+              media: {
+                photos: (d.media_extended || []).filter(m => m.type === 'image').map(m => ({ url: m.url })),
+                videos: (d.media_extended || []).filter(m => m.type === 'video' || m.type === 'gif').map(m => ({ url: m.url, thumbnail_url: m.thumbnail_url || '' }))
+              },
+              quote: d.qrt ? sanitizeTweetSnapshot(d.qrt) : null,
+              savedAt: Date.now()
+            };
+            tweetCache[tweetId] = mapped;
+            if (currentUser) {
+              set(ref(db, `users/${currentUser.uid}/tweetSnapshots/${tweetId}`), mapped);
+            }
+            return mapped;
+          }
+        }
+      } catch (e2) {
+        console.warn('vxtwitter also failed:', e2);
+      }
+
       return tweetCache[tweetId] || null;
     }
 
-    // ★ 古い投稿の動画URL（video.twimg.com）が期限切れになっていた場合、リアルタイムで最新URLを再取得して再生する関数
     window.recoverXVideo = async function(videoEl, tweetId) {
       if (!tweetId || videoEl.dataset.recovered === "true") return;
       videoEl.dataset.recovered = "true";
@@ -1324,7 +1371,6 @@
         videoEl.load();
         return;
       }
-      // 万が一直リンクがブラウザにブロックされた場合はX公式ウィジェットで確実に表示
       const wrapper = videoEl.parentElement;
       if (wrapper && window.twttr && window.twttr.widgets) {
         wrapper.innerHTML = '';
@@ -1332,7 +1378,6 @@
       }
     };
 
-    // 手動でX公式埋め込みプレイヤーに切り替えるボタン用
     window.loadOfficialTweetWidget = function(btnEl, tweetId, e) {
       if (e) e.stopPropagation();
       const box = btnEl.closest('.x-video-container');
@@ -1481,19 +1526,27 @@
       }, 60);
     };
 
-    window.hydrateTweetCards = async function() {
-      const nodes = document.querySelectorAll('[data-tweet-id]:not([data-loaded="true"])');
-      for (const node of nodes) {
+    // ★ すべてのツイートカードを同時並列で取得し、API失敗時は本家X公式ウィジェットで描画する
+    window.hydrateTweetCards = function() {
+      const nodes = Array.from(document.querySelectorAll('[data-tweet-id]:not([data-loaded="true"])'));
+      nodes.forEach(async (node) => {
         node.setAttribute('data-loaded', 'true');
         const tid = node.getAttribute('data-tweet-id');
         const fallbackUrl = node.getAttribute('data-tweet-url');
         const tweet = await fetchTweetData(tid);
+
         if (tweet) {
           node.innerHTML = buildNativeTweetCardHtml(tweet, false);
+        } else if (window.twttr && window.twttr.widgets) {
+          node.innerHTML = '';
+          node.className = 'my-2';
+          const twContainer = document.createElement('div');
+          node.appendChild(twContainer);
+          window.twttr.widgets.createTweet(String(tid), twContainer, { theme: 'dark', dnt: true });
         } else {
           node.innerHTML = `<a href="${fallbackUrl}" target="_blank" rel="noopener noreferrer" class="block my-2 p-3 rounded-xl border theme-border text-xs theme-accent-text hover:underline">𝕏 ポストを開く: ${fallbackUrl}</a>`;
         }
-      }
+      });
     };
 
     window.importTweetAsPost = async function() {
@@ -1783,23 +1836,22 @@
     };
 
     // =========================================================================
-    // ★ 4. メディアURLの描画（以前確実に動いていたシンプルな構造に固定）
+    // ★ 4. メディアURLの描画（404を完全防止し、YouTubeとXを確実に描画）
     // =========================================================================
     function renderMediaHtml(url, savedSnapshot = null) {
       let safeUrl = String(url || '').trim();
       if (!safeUrl) return '';
 
-      // ★ 過去のバグでデータベースに "$1" や "<iframe..." が混入していた場合、404を出さずに修復・除去する
       if (safeUrl.includes('<iframe')) {
         const srcMatch = safeUrl.match(/src=["']([^"']+)["']/i);
         if (srcMatch && srcMatch[1] && /^https?:\/\//i.test(srcMatch[1])) {
           safeUrl = srcMatch[1];
         } else {
-          return ''; // 壊れた404 iframeは表示しない
+          return '';
         }
       }
       if (!/^https?:\/\//i.test(safeUrl) && !safeUrl.startsWith('data:image/')) {
-        return ''; // 相対パス（404の原因）は一切描画しない
+        return '';
       }
 
       // 1. 本家X（Twitter）
@@ -1816,21 +1868,21 @@
         return `<div data-tweet-id="${tweetId}" data-tweet-url="${safeUrl}" class="my-2 p-4 rounded-2xl border theme-border theme-card text-xs theme-sub animate-pulse">𝕏 ポスト＆引用データを取得中...</div>`;
       }
 
-      // 2. YouTube（YouTube埋め込みエラー153を防ぐため no-referrer を絶対につけない＆タップで開けるサムネイルも併設）
+      // 2. YouTube
       const ytId = extractYouTubeId(safeUrl);
       if (ytId) {
         return `
           <div class="my-2 rounded-2xl overflow-hidden border theme-border bg-black" onclick="event.stopPropagation()">
             <div class="aspect-video w-full">
-              <iframe src="https://www.youtube-nocookie.com/embed/${ytId}"
+              <iframe src="[https://www.youtube.com/embed/$](https://www.youtube.com/embed/$){ytId}"
                 class="w-full h-full border-0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowfullscreen></iframe>
             </div>
-            <a href="https://www.youtube.com/watch?v=${ytId}" target="_blank" rel="noopener noreferrer"
-               class="px-3 py-2 bg-zinc-900 hover:bg-zinc-800 border-t theme-border flex items-center justify-between text-xs text-sky-400 font-bold transition">
-              <span>▶ YouTubeプレイヤー（再生制限がある場合はここをタップ）</span>
-              <span>YouTubeで開く ↗</span>
+            <a href="[https://www.youtube.com/watch?v=$](https://www.youtube.com/watch?v=$){ytId}" target="_blank" rel="noopener noreferrer"
+               class="px-3 py-1.5 bg-zinc-950 hover:bg-zinc-900 border-t theme-border flex items-center justify-between text-[11px] text-sky-400 font-bold transition">
+              <span>▶ YouTube</span>
+              <span>YouTubeで直接開く ↗</span>
             </a>
           </div>
         `;
@@ -1849,7 +1901,7 @@
       // 5. 一般のWebサイトURL
       let hostname = safeUrl;
       try { hostname = new URL(safeUrl).hostname; } catch (e) {}
-      const favicon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=64`;
+      const favicon = `[https://www.google.com/s2/favicons?domain=$](https://www.google.com/s2/favicons?domain=$){encodeURIComponent(hostname)}&sz=64`;
       return `
         <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="block my-2 p-3.5 rounded-2xl border theme-border theme-card hover:bg-white/[0.04] transition group">
           <div class="flex items-center gap-3">
@@ -1913,20 +1965,16 @@
         tweetCache[post.quotedExternalSnapshot.id] = post.quotedExternalSnapshot;
       }
 
-      const totalText = (post.blocks || [])
-        .filter(b => b.type === 'text')
-        .map(b => b.content || '')
-        .join('\n');
-      const lineCount = totalText.split('\n').length;
-      const isLongPost = totalText.length > 220 || lineCount > 6 || (post.blocks || []).length > 2;
-      const isExpanded = expandedPostIds.has(post.id);
-      const shouldCollapse = isLongPost && !isExpanded;
+      const isPostExpanded = expandedPostIds.has(post.id);
+      let hasLongTextInPost = false;
 
       const blocksHtml = (post.blocks || []).map(b => {
         if (b.type === 'text') {
           const rawContent = b.content || '';
+          const isThisBlockLong = rawContent.length > 220 || rawContent.split('\n').length > 6;
+          if (isThisBlockLong) hasLongTextInPost = true;
+          const collapseThisText = isThisBlockLong && !isPostExpanded;
 
-          // 本文中に直接書かれた XのURL と YouTubeのURL を両方検出して下にプレイヤー表示
           const inlineUrls = rawContent.match(/https?:\/\/[^\s<"]+/gi) || [];
           const seenKeys = new Set();
           const inlineMediaHtml = inlineUrls.map(u => {
@@ -1944,7 +1992,17 @@
             return '';
           }).join('');
 
-          return `${formatTextWithMathAndMarkdown(rawContent)}${inlineMediaHtml}`;
+          return `
+            <div class="${collapseThisText ? 'post-collapsed' : ''}">
+              ${formatTextWithMathAndMarkdown(rawContent)}
+            </div>
+            ${collapseThisText ? `
+              <button onclick="toggleExpandPost('${post.id}', event)" class="mt-1 mb-1 text-xs font-bold theme-accent-text hover:underline block">
+                さらに表示
+              </button>
+            ` : ''}
+            ${inlineMediaHtml}
+          `;
         }
         if (b.type === 'image') {
           return `<figure class="my-2">
@@ -2008,13 +2066,13 @@
 
             ${post.title ? `<h3 class="font-bold text-base mb-1">${post.title}</h3>` : ''}
 
-            <div class="${shouldCollapse ? 'post-collapsed' : ''}">
+            <div>
               ${blocksHtml}
             </div>
 
-            ${isLongPost ? `
+            ${hasLongTextInPost && isPostExpanded ? `
               <button onclick="toggleExpandPost('${post.id}', event)" class="mt-1 text-xs font-bold theme-accent-text hover:underline block">
-                ${shouldCollapse ? 'さらに表示' : '折りたたむ'}
+                折りたたむ
               </button>
             ` : ''}
 
