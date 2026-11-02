@@ -155,7 +155,7 @@
       <div class="space-y-1">
         <div class="px-3 py-2 text-3xl font-black tracking-tighter flex items-center justify-between">
           <span>𝕏</span>
-          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v4.2</span>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v4.3</span>
         </div>
         <button id="nav-btn-all" onclick="setFilter('all')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 transition">
           <i data-lucide="home" class="w-5 h-5"></i> <span>ホーム</span>
@@ -610,7 +610,7 @@
     }
 
     // =========================================================================
-    // ★ 2. LaTeX（数式・化学式 \ce{}）＆ Markdown 変換（URLを壊さない安全設計）
+    // ★ 2. LaTeX（数式・化学式 \ce{}）＆ Markdown 変換
     // =========================================================================
     function formatTextWithMathAndMarkdown(rawContent) {
       if (!rawContent) return '';
@@ -692,7 +692,6 @@
       document.getElementById('app-screen').classList.remove('hidden');
       document.getElementById('user-email').textContent = user.email;
 
-      // ★ 無限ループ防止：スナップショット更新時はメモリキャッシュへの格納のみ行う
       onValue(ref(db, `users/${user.uid}/tweetSnapshots`), (snap) => {
         const val = snap.val() || {};
         Object.entries(val).forEach(([tid, tData]) => {
@@ -1526,7 +1525,6 @@
       }, 60);
     };
 
-    // ★ すべてのツイートカードを同時並列で取得し、API失敗時は本家X公式ウィジェットで描画する
     window.hydrateTweetCards = function() {
       const nodes = Array.from(document.querySelectorAll('[data-tweet-id]:not([data-loaded="true"])'));
       nodes.forEach(async (node) => {
@@ -1836,22 +1834,14 @@
     };
 
     // =========================================================================
-    // ★ 4. メディアURLの描画（404を完全防止し、YouTubeとXを確実に描画）
+    // ★ 4. メディアURLの描画（余計なURL遮断を撤去し、YouTubeをシンプルに描画）
     // =========================================================================
     function renderMediaHtml(url, savedSnapshot = null) {
       let safeUrl = String(url || '').trim();
-      if (!safeUrl) return '';
+      if (!safeUrl || safeUrl === '$1' || safeUrl.includes('<iframe')) return '';
 
-      if (safeUrl.includes('<iframe')) {
-        const srcMatch = safeUrl.match(/src=["']([^"']+)["']/i);
-        if (srcMatch && srcMatch[1] && /^https?:\/\//i.test(srcMatch[1])) {
-          safeUrl = srcMatch[1];
-        } else {
-          return '';
-        }
-      }
-      if (!/^https?:\/\//i.test(safeUrl) && !safeUrl.startsWith('data:image/')) {
-        return '';
+      if (!/^https?:\/\//i.test(safeUrl) && !safeUrl.startsWith('data:')) {
+        safeUrl = 'https://' + safeUrl;
       }
 
       // 1. 本家X（Twitter）
@@ -1868,24 +1858,12 @@
         return `<div data-tweet-id="${tweetId}" data-tweet-url="${safeUrl}" class="my-2 p-4 rounded-2xl border theme-border theme-card text-xs theme-sub animate-pulse">𝕏 ポスト＆引用データを取得中...</div>`;
       }
 
-      // 2. YouTube
+      // 2. YouTube（最もシンプルで確実な埋め込み）
       const ytId = extractYouTubeId(safeUrl);
       if (ytId) {
-        return `
-          <div class="my-2 rounded-2xl overflow-hidden border theme-border bg-black" onclick="event.stopPropagation()">
-            <div class="aspect-video w-full">
-              <iframe src="[https://www.youtube.com/embed/$](https://www.youtube.com/embed/$){ytId}"
-                class="w-full h-full border-0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowfullscreen></iframe>
-            </div>
-            <a href="[https://www.youtube.com/watch?v=$](https://www.youtube.com/watch?v=$){ytId}" target="_blank" rel="noopener noreferrer"
-               class="px-3 py-1.5 bg-zinc-950 hover:bg-zinc-900 border-t theme-border flex items-center justify-between text-[11px] text-sky-400 font-bold transition">
-              <span>▶ YouTube</span>
-              <span>YouTubeで直接開く ↗</span>
-            </a>
-          </div>
-        `;
+        return `<div class="aspect-video w-full rounded-xl overflow-hidden my-2 border theme-border bg-black" onclick="event.stopPropagation()">
+          <iframe src="[https://www.youtube.com/embed/$](https://www.youtube.com/embed/$){ytId}" class="w-full h-full border-0" allowfullscreen></iframe>
+        </div>`;
       }
 
       // 3. 動画ファイル直リンク
