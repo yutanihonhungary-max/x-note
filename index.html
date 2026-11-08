@@ -6,10 +6,11 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>𝕏 - Personal Note</title>
+  <title>X-Note</title>
   
-  <!-- X風のファビコン -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23000000'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='central' text-anchor='middle' fill='%23ffffff' font-family='sans-serif' font-weight='900' font-size='68'%3E%F0%9D%95%8F%3C/text%3E%3C/svg%3E">
+  <!-- ファビコン（本家Xと区別しやすい青い吹き出し） -->
+  <link rel="icon" type="image/svg+xml" href="./icons/favicon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
   
   <!-- PWA用設定 -->
@@ -190,7 +191,7 @@
       <div class="space-y-1">
         <div class="px-3 py-2 text-3xl font-black tracking-tighter flex items-center justify-between">
           <span>𝕏</span>
-          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v4.1</span>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v4.2</span>
         </div>
         <button id="nav-btn-all" onclick="setFilter('all')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 transition">
           <i data-lucide="home" class="w-5 h-5"></i> <span>ホーム</span>
@@ -403,6 +404,10 @@
             <span>写真</span>
             <input id="photo-input" type="file" accept="image/*" multiple class="hidden">
           </label>
+          <button onclick="openDrawModal()" class="p-2 rounded-full hover:bg-white/10 theme-accent-text transition flex items-center gap-1 text-xs font-bold" title="カーソル位置に手書きを挿入">
+            <i data-lucide="pen-tool" class="w-4 h-4"></i>
+            <span>手書き</span>
+          </button>
           <button onclick="insertUrlBlock()" class="p-2 rounded-full hover:bg-white/10 theme-accent-text transition flex items-center gap-1 text-xs font-bold" title="YouTube・X・WebサイトのURLカードを挿入">
             <i data-lucide="link" class="w-4 h-4"></i>
             <span>動画/URL</span>
@@ -546,6 +551,45 @@
         <button onclick="addCategory('modal-new-category-input')" class="px-4 py-2 rounded-xl theme-accent-bg text-white font-bold text-xs shrink-0">追加</button>
       </div>
       <div id="modal-category-manage-list" class="space-y-2 max-h-72 overflow-y-auto text-xs"></div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 5. 手書きモーダル -->
+  <!-- ========================================================================= -->
+  <div id="draw-modal" class="hidden fixed inset-0 z-[60] flex flex-col" style="background: var(--bg-main);">
+    <div class="px-2 py-2 border-b theme-border theme-card flex flex-wrap items-center gap-1.5 text-xs select-none">
+      <button onclick="closeDrawModal()" class="px-3 py-1.5 rounded-full hover:bg-white/10 font-bold">キャンセル</button>
+
+      <div id="draw-colors" class="flex items-center gap-1 px-1"></div>
+
+      <div class="flex items-center gap-1.5 px-2 py-1 rounded-full bg-black/30 border theme-border">
+        <span id="draw-width-dot" class="inline-block rounded-full" style="width:6px;height:6px;background:currentColor"></span>
+        <input id="draw-width" type="range" min="1" max="40" value="4" class="w-20 sm:w-28 h-1" oninput="updateDrawWidthDot()">
+      </div>
+
+      <button id="draw-eraser-btn" onclick="toggleDrawEraser()" class="px-2.5 py-1.5 rounded-full border theme-border font-bold flex items-center gap-1" title="消しゴム">
+        <i data-lucide="eraser" class="w-3.5 h-3.5"></i><span class="hidden sm:inline">消しゴム</span>
+      </button>
+      <button onclick="drawUndo()" class="p-1.5 rounded-full hover:bg-white/10" title="元に戻す"><i data-lucide="undo-2" class="w-4 h-4"></i></button>
+      <button onclick="drawRedo()" class="p-1.5 rounded-full hover:bg-white/10" title="やり直す"><i data-lucide="redo-2" class="w-4 h-4"></i></button>
+
+      <select id="draw-bg" onchange="setDrawBg(this.value)" class="theme-card border theme-border rounded-full px-2 py-1 font-bold outline-none" title="背景">
+        <option value="black">背景: 黒</option>
+        <option value="white">背景: 白</option>
+        <option value="grid">背景: 方眼</option>
+        <option value="transparent">背景: 透明</option>
+      </select>
+
+      <label class="flex items-center gap-1 px-1.5 cursor-pointer" title="ペン（スタイラス）だけで描き、指での描画を無視します">
+        <input id="draw-pen-only" type="checkbox" class="accent-sky-500"> ペンのみ
+      </label>
+
+      <button onclick="clearDraw()" class="px-2.5 py-1.5 rounded-full hover:bg-red-500/10 text-red-400 font-bold">全消去</button>
+      <button id="draw-done-btn" onclick="finishDraw()" class="ml-auto px-5 py-1.5 rounded-full theme-accent-bg text-white font-bold">挿入</button>
+    </div>
+    <div id="draw-stage" class="flex-1 relative overflow-hidden">
+      <canvas id="draw-canvas" class="absolute inset-0 w-full h-full" style="touch-action: none; cursor: crosshair;"></canvas>
     </div>
   </div>
 
@@ -1811,10 +1855,16 @@
         const wrapper = document.createElement('div');
         wrapper.className = "bg-black/30 border theme-border rounded-xl p-2.5";
 
+        // 自分の画像（端末から追加・手書き）だけ書き込み可能。外部サイトの画像は不可
+        const canAnnotate = block.type === 'image' && (block.mediaId || (typeof block.url === 'string' && block.url.startsWith('data:')));
+        const typeLabel = block.type === 'text' ? 'テキスト段落（LaTeX・化学式・Markdown表対応）'
+          : block.type === 'image' ? (block.handwriting ? '手書き' : '写真')
+          : '動画 / Webリンク / 𝕏引用';
         const controls = `
           <div class="flex items-center justify-between text-[11px] theme-sub mb-1">
-            <span>${block.type === 'text' ? 'テキスト段落（LaTeX・化学式・Markdown表対応）' : block.type === 'image' ? '写真' : '動画 / Webリンク / 𝕏引用'}</span>
+            <span>${typeLabel}</span>
             <div class="flex items-center gap-1">
+              ${canAnnotate ? `<button onclick="openDrawModal(${idx})" class="px-1.5 py-0.5 theme-accent-text hover:bg-white/10 rounded font-bold">✎ ${block.handwriting ? '手書きを編集' : '書き込む'}</button>` : ''}
               <button onclick="moveBlock(${idx}, -1)" class="px-1.5 py-0.5 hover:bg-white/10 rounded">↑</button>
               <button onclick="moveBlock(${idx}, 1)" class="px-1.5 py-0.5 hover:bg-white/10 rounded">↓</button>
               <button onclick="removeBlock(${idx})" class="px-1.5 py-0.5 text-red-400 hover:bg-red-500/10 rounded">削除</button>
@@ -1976,6 +2026,328 @@
 
     window.updateBlockCaption = function(idx, val) {
       if (editorBlocks[idx]) editorBlocks[idx].caption = val;
+    };
+
+    // =========================================================================
+    // ★ 手書き（ペン・消しゴム・筆圧・元に戻す・背景・写真への書き込み）
+    //    描いた結果は普通の画像ブロック（handwriting: true）として保存される
+    // =========================================================================
+    const DRAW_COLORS = ['#ffffff', '#0f1419', '#f4212e', '#1d9bf0', '#00ba7c', '#ffd400', '#ff7a00', '#7856ff'];
+    const DRAW_UNDO_LIMIT = 12;
+    const draw = {
+      canvas: null, ctx: null, dpr: 1,
+      color: '#ffffff', eraser: false, bg: 'black',
+      drawing: false, last: null, lastMid: null, pointerId: null,
+      undo: [], redo: [], dirty: false,
+      editIdx: null, sawPen: false
+    };
+
+    function drawBgCss(bg) {
+      if (bg === 'white') return '#ffffff';
+      if (bg === 'black') return '#000000';
+      if (bg === 'grid') return 'linear-gradient(#e3e8ec 1px, transparent 1px) 0 0 / 24px 24px, linear-gradient(90deg, #e3e8ec 1px, transparent 1px) 0 0 / 24px 24px, #ffffff';
+      return 'repeating-conic-gradient(#2a2d31 0% 25%, #1c1e21 0% 50%) 0 0 / 20px 20px';
+    }
+
+    function renderDrawColors() {
+      document.getElementById('draw-colors').innerHTML = DRAW_COLORS.map(c => `
+        <button onclick="setDrawColor('${c}')" title="${c}"
+          class="w-6 h-6 rounded-full border-2 transition ${!draw.eraser && draw.color === c ? 'scale-110' : 'opacity-80'}"
+          style="background:${c}; border-color:${!draw.eraser && draw.color === c ? 'var(--accent)' : 'rgba(128,128,128,0.5)'}"></button>
+      `).join('');
+      const eb = document.getElementById('draw-eraser-btn');
+      eb.classList.toggle('theme-accent-bg', draw.eraser);
+      eb.classList.toggle('text-white', draw.eraser);
+      updateDrawWidthDot();
+    }
+
+    window.updateDrawWidthDot = function() {
+      const w = Number(document.getElementById('draw-width').value);
+      const dot = document.getElementById('draw-width-dot');
+      const px = Math.max(3, Math.min(18, w));
+      dot.style.width = dot.style.height = px + 'px';
+      dot.style.background = draw.eraser ? 'transparent' : draw.color;
+      dot.style.border = draw.eraser ? '1px dashed currentColor' : '1px solid rgba(128,128,128,0.6)';
+    };
+
+    window.setDrawColor = function(c) {
+      draw.color = c;
+      draw.eraser = false;
+      renderDrawColors();
+    };
+    window.toggleDrawEraser = function() {
+      draw.eraser = !draw.eraser;
+      renderDrawColors();
+    };
+
+    window.setDrawBg = function(bg) {
+      draw.bg = bg;
+      document.getElementById('draw-bg').value = bg;
+      document.getElementById('draw-stage').style.background = drawBgCss(bg);
+      // 背景に合わせてペン色の初期値を見やすい色にする
+      if (!draw.dirty && (bg === 'white' || bg === 'grid') && draw.color === '#ffffff') setDrawColor('#0f1419');
+      if (!draw.dirty && bg === 'black' && draw.color === '#0f1419') setDrawColor('#ffffff');
+    };
+
+    function setupDrawCanvas() {
+      const stage = document.getElementById('draw-stage');
+      const canvas = document.getElementById('draw-canvas');
+      const rect = stage.getBoundingClientRect();
+      draw.dpr = Math.min(2, window.devicePixelRatio || 1);
+      canvas.width = Math.max(1, Math.round(rect.width * draw.dpr));
+      canvas.height = Math.max(1, Math.round(rect.height * draw.dpr));
+      draw.canvas = canvas;
+      draw.ctx = canvas.getContext('2d', { willReadFrequently: false });
+      draw.ctx.lineCap = 'round';
+      draw.ctx.lineJoin = 'round';
+      draw.undo = [];
+      draw.redo = [];
+      draw.dirty = false;
+    }
+
+    function loadImageEl(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+    }
+
+    // blockIdx を渡すと、その画像ブロック（手書き・写真）の上に書き込める
+    window.openDrawModal = async function(blockIdx = null) {
+      draw.editIdx = (typeof blockIdx === 'number') ? blockIdx : null;
+      const block = draw.editIdx !== null ? editorBlocks[draw.editIdx] : null;
+
+      document.getElementById('draw-modal').classList.remove('hidden');
+      document.getElementById('draw-done-btn').textContent = block ? '更新' : '挿入';
+      document.getElementById('draw-pen-only').checked = draw.sawPen;
+      setupDrawCanvas();
+
+      const defaultBg = block
+        ? (block.handwriting ? (block.drawBg || 'transparent') : 'transparent')
+        : (themeSettings.bgMode === 'light' ? 'white' : 'black');
+      draw.color = (defaultBg === 'white' || defaultBg === 'grid') ? '#0f1419' : '#ffffff';
+      draw.eraser = false;
+      setDrawBg(defaultBg);
+      renderDrawColors();
+      lucide.createIcons();
+
+      if (block) {
+        try {
+          const src = block.mediaId ? await getMediaDataUrl(block.mediaId) : block.url;
+          if (!src) throw new Error('no image');
+          const img = await loadImageEl(src);
+          const cw = draw.canvas.width, ch = draw.canvas.height;
+          const scale = Math.min(cw / img.width, ch / img.height, draw.dpr);
+          const w = img.width * scale, h = img.height * scale;
+          draw.ctx.drawImage(img, (cw - w) / 2, (ch - h) / 2, w, h);
+          draw.dirty = true;
+        } catch (e) {
+          console.error(e);
+          showToast('元の画像を読み込めませんでした');
+        }
+      }
+    };
+
+    window.closeDrawModal = function(force = false) {
+      if (!force && draw.dirty && draw.undo.length > 0 && !confirm('手書きを破棄して閉じますか？')) return;
+      document.getElementById('draw-modal').classList.add('hidden');
+      draw.undo = [];
+      draw.redo = [];
+    };
+
+    function pushDrawUndo() {
+      draw.undo.push(draw.ctx.getImageData(0, 0, draw.canvas.width, draw.canvas.height));
+      if (draw.undo.length > DRAW_UNDO_LIMIT) draw.undo.shift();
+      draw.redo = [];
+    }
+    window.drawUndo = function() {
+      if (!draw.undo.length) return;
+      draw.redo.push(draw.ctx.getImageData(0, 0, draw.canvas.width, draw.canvas.height));
+      draw.ctx.putImageData(draw.undo.pop(), 0, 0);
+    };
+    window.drawRedo = function() {
+      if (!draw.redo.length) return;
+      draw.undo.push(draw.ctx.getImageData(0, 0, draw.canvas.width, draw.canvas.height));
+      draw.ctx.putImageData(draw.redo.pop(), 0, 0);
+    };
+    window.clearDraw = function() {
+      if (!draw.dirty) return;
+      pushDrawUndo();
+      draw.ctx.clearRect(0, 0, draw.canvas.width, draw.canvas.height);
+    };
+
+    function drawPoint(e) {
+      const r = draw.canvas.getBoundingClientRect();
+      const pressure = e.pointerType === 'pen' ? (e.pressure || 0.5) : 0.5;
+      return { x: (e.clientX - r.left) * draw.dpr, y: (e.clientY - r.top) * draw.dpr, p: pressure };
+    }
+
+    function strokeWidth(p) {
+      const base = Number(document.getElementById('draw-width').value) * draw.dpr;
+      return draw.eraser ? base * 3 : Math.max(0.5, base * (0.35 + p * 1.3));
+    }
+
+    function applyStrokeStyle() {
+      const ctx = draw.ctx;
+      ctx.globalCompositeOperation = draw.eraser ? 'destination-out' : 'source-over';
+      ctx.strokeStyle = draw.color;
+      ctx.fillStyle = draw.color;
+    }
+
+    function shouldIgnorePointer(e) {
+      if (e.pointerType === 'pen' && !draw.sawPen) {
+        draw.sawPen = true;
+        document.getElementById('draw-pen-only').checked = true; // ペンを検出したら手のひら誤爆を防ぐ
+      }
+      return e.pointerType === 'touch' && document.getElementById('draw-pen-only').checked;
+    }
+
+    function initDrawEvents() {
+      const canvas = document.getElementById('draw-canvas');
+
+      canvas.addEventListener('pointerdown', (e) => {
+        if (shouldIgnorePointer(e) || draw.drawing) return;
+        if (e.button !== undefined && e.button > 0) return;
+        e.preventDefault();
+        try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+        pushDrawUndo();
+        draw.drawing = true;
+        draw.pointerId = e.pointerId;
+        const pt = drawPoint(e);
+        draw.last = pt;
+        draw.lastMid = pt;
+        applyStrokeStyle();
+        const ctx = draw.ctx;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, strokeWidth(pt.p) / 2, 0, Math.PI * 2);
+        ctx.fill();
+        draw.dirty = true;
+      });
+
+      canvas.addEventListener('pointermove', (e) => {
+        if (!draw.drawing || e.pointerId !== draw.pointerId) return;
+        e.preventDefault();
+        const events = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : [e];
+        const ctx = draw.ctx;
+        applyStrokeStyle();
+        (events.length ? events : [e]).forEach(ev => {
+          const pt = drawPoint(ev);
+          const mid = { x: (draw.last.x + pt.x) / 2, y: (draw.last.y + pt.y) / 2, p: (draw.last.p + pt.p) / 2 };
+          ctx.lineWidth = strokeWidth(mid.p);
+          ctx.beginPath();
+          ctx.moveTo(draw.lastMid.x, draw.lastMid.y);
+          ctx.quadraticCurveTo(draw.last.x, draw.last.y, mid.x, mid.y);
+          ctx.stroke();
+          draw.last = pt;
+          draw.lastMid = mid;
+        });
+      });
+
+      const endStroke = (e) => {
+        if (!draw.drawing || e.pointerId !== draw.pointerId) return;
+        const ctx = draw.ctx;
+        ctx.lineWidth = strokeWidth(draw.last.p);
+        ctx.beginPath();
+        ctx.moveTo(draw.lastMid.x, draw.lastMid.y);
+        ctx.lineTo(draw.last.x, draw.last.y);
+        ctx.stroke();
+        ctx.globalCompositeOperation = 'source-over';
+        draw.drawing = false;
+        draw.pointerId = null;
+      };
+      canvas.addEventListener('pointerup', endStroke);
+      canvas.addEventListener('pointercancel', endStroke);
+
+      // Ctrl+Z / Ctrl+Shift+Z
+      window.addEventListener('keydown', (e) => {
+        if (document.getElementById('draw-modal').classList.contains('hidden')) return;
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+          e.preventDefault();
+          if (e.shiftKey) drawRedo(); else drawUndo();
+        } else if (e.key === 'Escape') {
+          closeDrawModal();
+        }
+      });
+    }
+    initDrawEvents();
+
+    // 描いた部分だけを切り出し（方眼以外）、背景と合成して画像にする
+    function exportDrawing() {
+      const src = draw.canvas;
+      let sx = 0, sy = 0, sw = src.width, sh = src.height;
+
+      if (draw.bg !== 'grid') {
+        const data = draw.ctx.getImageData(0, 0, src.width, src.height).data;
+        let minX = src.width, minY = src.height, maxX = -1, maxY = -1;
+        for (let y = 0; y < src.height; y += 2) {
+          const row = y * src.width * 4;
+          for (let x = 0; x < src.width; x += 2) {
+            if (data[row + x * 4 + 3] > 8) {
+              if (x < minX) minX = x;
+              if (x > maxX) maxX = x;
+              if (y < minY) minY = y;
+              if (y > maxY) maxY = y;
+            }
+          }
+        }
+        if (maxX < 0) return null; // 何も描かれていない
+        const pad = Math.round(24 * draw.dpr);
+        sx = Math.max(0, minX - pad);
+        sy = Math.max(0, minY - pad);
+        sw = Math.min(src.width, maxX + pad) - sx;
+        sh = Math.min(src.height, maxY + pad) - sy;
+      }
+
+      const maxW = 1600;
+      const scale = Math.min(1, maxW / sw);
+      const out = document.createElement('canvas');
+      out.width = Math.max(1, Math.round(sw * scale));
+      out.height = Math.max(1, Math.round(sh * scale));
+      const octx = out.getContext('2d');
+
+      if (draw.bg === 'white' || draw.bg === 'grid') {
+        octx.fillStyle = '#ffffff';
+        octx.fillRect(0, 0, out.width, out.height);
+      } else if (draw.bg === 'black') {
+        octx.fillStyle = '#000000';
+        octx.fillRect(0, 0, out.width, out.height);
+      }
+      if (draw.bg === 'grid') {
+        const step = 24 * draw.dpr * scale;
+        octx.strokeStyle = '#e3e8ec';
+        octx.lineWidth = Math.max(1, scale * draw.dpr);
+        octx.beginPath();
+        for (let x = (-sx * scale) % step; x < out.width; x += step) { octx.moveTo(x + 0.5, 0); octx.lineTo(x + 0.5, out.height); }
+        for (let y = (-sy * scale) % step; y < out.height; y += step) { octx.moveTo(0, y + 0.5); octx.lineTo(out.width, y + 0.5); }
+        octx.stroke();
+      }
+      octx.drawImage(src, sx, sy, sw, sh, 0, 0, out.width, out.height);
+      return out.toDataURL('image/webp', 0.9);
+    }
+
+    window.finishDraw = function() {
+      let dataUrl;
+      try {
+        dataUrl = exportDrawing();
+      } catch (e) {
+        console.error(e);
+        alert('この画像には書き込めませんでした（外部サイトの画像は書き込みできません）');
+        return;
+      }
+      if (!dataUrl) {
+        showToast('何も描かれていません');
+        return;
+      }
+      if (draw.editIdx !== null && editorBlocks[draw.editIdx]) {
+        const { mediaId, ...rest } = editorBlocks[draw.editIdx];
+        editorBlocks[draw.editIdx] = { ...rest, url: dataUrl, handwriting: true, drawBg: draw.bg };
+        renderEditor();
+      } else {
+        insertBlockAtCursor({ id: crypto.randomUUID(), type: 'image', url: dataUrl, caption: '', handwriting: true, drawBg: draw.bg });
+      }
+      closeDrawModal(true);
     };
 
     let isSavingPost = false;
