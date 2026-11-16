@@ -47,7 +47,9 @@
     body {
       background-color: var(--bg-main);
       color: var(--text-main);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", Meiryo, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
       overscroll-behavior-x: none;
     }
     .theme-card { background-color: var(--bg-card); }
@@ -145,6 +147,47 @@
     html.theme-light .border-gray-500 { border-color: #aab8c2; }
     html.theme-light select option { background: #ffffff; color: #0f1419; }
     html.theme-light ::-webkit-scrollbar-thumb { background: #cfd9de; }
+
+    /* ===== v4.3 デザイン調整 ===== */
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+    input:focus-visible, textarea:focus-visible, select:focus-visible { outline: none; }
+    #search-input:focus { border-color: var(--accent); }
+
+    /* タブ：選択中はラベルの下に短い帯を出す */
+    .tab-btn { position: relative; padding: 14px 18px; font-size: 14px; font-weight: 600; white-space: nowrap; color: var(--text-sub); transition: background-color .15s, color .15s; }
+    .tab-btn:hover { background-color: rgba(128,128,128,0.12); color: var(--text-main); }
+    .tab-btn.is-active { color: var(--text-main); font-weight: 800; }
+    .tab-btn.is-active::after { content: ''; position: absolute; left: 18px; right: 18px; bottom: 0; height: 4px; border-radius: 4px 4px 0 0; background: var(--accent); }
+
+    /* ポスト */
+    .feed-article { transition: background-color .15s; }
+    .post-name { font-size: 15px; font-weight: 800; color: var(--text-main); }
+    .post-meta { font-size: 13.5px; color: var(--text-sub); }
+    .post-title { font-size: 17px; font-weight: 800; line-height: 1.4; margin-bottom: 4px; letter-spacing: 0.01em; }
+    .cat-chip { font-size: 11px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border-color); color: var(--text-sub); }
+    .act-btn { display: inline-flex; align-items: center; gap: 2px; color: var(--text-sub); transition: color .15s; }
+    .act-btn > .act-ic { padding: 8px; border-radius: 999px; transition: background-color .15s; display: inline-flex; }
+    .act-btn:hover { color: var(--accent); }
+    .act-btn:hover > .act-ic { background-color: color-mix(in srgb, var(--accent) 12%, transparent); }
+    .act-btn.is-on { color: var(--accent); }
+    .act-btn.act-gemini:hover { color: #a78bfa; }
+    .act-btn.act-gemini:hover > .act-ic { background-color: rgba(167,139,250,0.14); }
+    .chip-btn { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border-color); color: var(--text-sub); transition: color .15s, border-color .15s, background-color .15s; }
+    .chip-btn:hover { color: var(--text-main); background-color: rgba(128,128,128,0.12); }
+    .chip-btn.chip-gemini:hover { color: #a78bfa; border-color: rgba(167,139,250,0.5); }
+
+    /* ポストの「…」メニュー */
+    #post-menu { position: fixed; z-index: 45; min-width: 190px; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 14px; box-shadow: 0 8px 28px rgba(0,0,0,0.45), 0 0 0 1px rgba(128,128,128,0.08); padding: 6px; }
+    #post-menu button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border-radius: 9px; font-size: 14px; font-weight: 700; color: var(--text-main); text-align: left; }
+    #post-menu button:hover { background-color: rgba(128,128,128,0.14); }
+    #post-menu button.danger { color: #f4212e; }
+
+    .profile-banner-bg { background: linear-gradient(115deg, color-mix(in srgb, var(--accent) 62%, #000) 0%, color-mix(in srgb, var(--accent) 26%, var(--bg-main)) 60%, var(--bg-card) 100%); }
+    .profile-avatar-ring { border: 4px solid var(--bg-main); background: var(--bg-card); }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
   </style>
 </head>
 <body class="min-h-screen selection:bg-sky-500 selection:text-white">
@@ -167,14 +210,15 @@
     </button>
   </div>
 
+  <!-- ポストの「…」メニュー（1つを使い回す） -->
+  <div id="post-menu" class="hidden" role="menu"></div>
+
   <!-- 未ログイン時のロック画面 -->
   <div id="login-screen" class="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-6">
     <div class="w-full max-w-sm bg-[#16181c] border border-[#2f3336] rounded-2xl p-8 text-center shadow-2xl">
-      <div class="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-4 text-white font-black text-4xl">
-        𝕏
-      </div>
-      <h1 class="text-xl font-bold text-white mb-2">X-Note Personal</h1>
-      <p class="text-xs text-gray-400 mb-6">自分専用の長文・スレッド・数式/化学式・メディア同期ノート</p>
+      <img src="./icons/favicon.svg" alt="" class="w-16 h-16 mx-auto mb-5">
+      <h1 class="text-2xl font-extrabold text-white mb-2 tracking-tight">X-Note</h1>
+      <p class="text-sm text-gray-400 mb-7 leading-relaxed">自分だけが読める、ポスト形式のノート。<br>どの端末からでも同じ内容を開けます。</p>
       <button id="login-btn" class="w-full py-3 px-4 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition flex items-center justify-center gap-2">
         <i data-lucide="log-in" class="w-4 h-4"></i>
         Googleでログイン
@@ -189,26 +233,27 @@
     <!-- 左サイドバー（PC用） -->
     <aside class="hidden md:flex flex-col w-60 border-r theme-border p-4 sticky top-0 h-screen justify-between shrink-0">
       <div class="space-y-1">
-        <div class="px-3 py-2 text-3xl font-black tracking-tighter flex items-center justify-between">
-          <span>𝕏</span>
-          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v4.2</span>
+        <div class="px-3 pt-1 pb-4 flex items-center gap-2.5">
+          <img src="./icons/favicon.svg" alt="" class="w-8 h-8">
+          <span class="text-xl font-extrabold tracking-tight">X-Note</span>
+          <span class="text-[11px] theme-sub ml-auto">v4.3</span>
         </div>
-        <button id="nav-btn-all" onclick="setFilter('all')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 transition">
+        <button id="nav-btn-all" onclick="setFilter('all')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 transition text-[15px]">
           <i data-lucide="home" class="w-5 h-5"></i> <span>ホーム</span>
         </button>
-        <button id="nav-btn-bookmark" onclick="setFilter('bookmark')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 transition">
+        <button id="nav-btn-bookmark" onclick="setFilter('bookmark')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 transition text-[15px]">
           <i data-lucide="bookmark" class="w-5 h-5"></i> <span>ブックマーク</span>
         </button>
-        <button id="nav-btn-media" onclick="setFilter('media')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 transition">
+        <button id="nav-btn-media" onclick="setFilter('media')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 transition text-[15px]">
           <i data-lucide="image" class="w-5 h-5"></i> <span>メディア</span>
         </button>
-        <button onclick="openCategoryModal()" class="lg:hidden w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 theme-sub hover:text-white transition">
+        <button onclick="openCategoryModal()" class="lg:hidden w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 theme-sub hover:text-white transition text-[15px]">
           <i data-lucide="folder-kanban" class="w-5 h-5"></i> <span>タブ管理</span>
         </button>
-        <button onclick="openProfileModal()" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 theme-sub hover:text-white transition">
+        <button onclick="openProfileModal()" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 theme-sub hover:text-white transition text-[15px]">
           <i data-lucide="user" class="w-5 h-5"></i> <span>プロフィール設定</span>
         </button>
-        <button onclick="openDisplayModal()" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 theme-sub hover:text-white transition">
+        <button onclick="openDisplayModal()" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 theme-sub hover:text-white transition text-[15px]">
           <i data-lucide="sliders" class="w-5 h-5"></i> <span>表示・文字・配色</span>
         </button>
 
@@ -244,10 +289,10 @@
             <button id="back-home-btn" onclick="setFilter('all')" class="hidden p-1.5 -ml-1 rounded-full hover:bg-white/10 transition" title="ホームに戻る">
               <i data-lucide="arrow-left" class="w-4 h-4"></i>
             </button>
-            <span class="md:hidden font-black text-2xl">𝕏</span>
+            <img src="./icons/favicon.svg" alt="" class="md:hidden w-7 h-7">
             <div>
               <div class="flex items-center gap-2">
-                <h2 id="header-title" class="font-bold text-base leading-tight whitespace-nowrap">ホーム</h2>
+                <h2 id="header-title" class="font-extrabold text-lg leading-tight whitespace-nowrap">ホーム</h2>
                 <span id="header-mode-badge" class="hidden text-[10px] px-2 py-0.5 rounded-full font-bold bg-sky-500/20 text-sky-400 border border-sky-500/30"></span>
               </div>
               <p id="header-subtitle" class="text-[11px] theme-sub hidden"></p>
@@ -257,7 +302,7 @@
           <div class="flex items-center gap-2 flex-1 justify-end max-w-sm">
             <div class="relative flex-1">
               <i data-lucide="search" class="w-4 h-4 theme-sub absolute left-3 top-1/2 -translate-y-1/2"></i>
-              <input id="search-input" type="text" placeholder="検索や #タグ..." class="w-full theme-card border theme-border rounded-full pl-9 pr-3 py-1.5 text-xs outline-none">
+              <input id="search-input" type="text" placeholder="検索や #タグ..." class="w-full theme-card border theme-border rounded-full pl-9 pr-3 py-2 text-sm outline-none transition">
             </div>
             <button id="select-mode-btn" onclick="toggleSelectMode()" class="px-3 py-1.5 rounded-full border theme-border text-xs font-bold theme-sub hover:text-white hover:bg-white/5 transition flex items-center gap-1.5 shrink-0" title="複数のポストを選択してまとめてコピー">
               <i data-lucide="check-square" class="w-3.5 h-3.5"></i>
@@ -267,7 +312,7 @@
         </div>
 
         <!-- タブバー -->
-        <div id="category-tabs" class="flex items-center overflow-x-auto border-t theme-border text-xs font-bold no-scrollbar"></div>
+        <div id="category-tabs" class="flex items-center overflow-x-auto no-scrollbar"></div>
       </header>
 
       <!-- モード切替バナー -->
@@ -286,24 +331,24 @@
 
       <!-- X風プロフィールヘッダー -->
       <section id="profile-section" class="border-b theme-border">
-        <div class="h-36 sm:h-44 w-full bg-gradient-to-r from-slate-900 via-sky-950 to-slate-900 relative overflow-hidden">
+        <div class="h-32 sm:h-40 w-full profile-banner-bg relative overflow-hidden">
           <img id="profile-banner" src="" class="w-full h-full object-cover hidden">
         </div>
         <div class="px-4 pb-4 relative">
           <div class="flex justify-between items-end -mt-12 sm:-mt-14 mb-3">
-            <img id="profile-avatar" src="" class="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-black object-cover bg-zinc-900">
+            <img id="profile-avatar" src="" class="w-24 h-24 sm:w-28 sm:h-28 rounded-full profile-avatar-ring object-cover">
             <div class="flex gap-2">
-              <button onclick="openCategoryModal()" class="lg:hidden px-3.5 py-1.5 rounded-full border theme-border text-xs font-bold hover:bg-white/5 transition">
+              <button onclick="openCategoryModal()" class="lg:hidden px-4 py-1.5 rounded-full border theme-border text-sm font-bold hover:bg-white/5 transition">
                 タブ管理
               </button>
-              <button onclick="openProfileModal()" class="px-4 py-1.5 rounded-full border theme-border text-xs font-bold hover:bg-white/5 transition">
+              <button onclick="openProfileModal()" class="px-4 py-1.5 rounded-full border theme-border text-sm font-bold hover:bg-white/5 transition">
                 プロフィールを編集
               </button>
             </div>
           </div>
-          <h1 id="profile-name" class="font-extrabold text-lg leading-tight">Personal Note</h1>
-          <div id="profile-handle" class="text-xs theme-sub mb-2">@my_private_x</div>
-          <p id="profile-bio" class="text-xs whitespace-pre-wrap leading-relaxed"></p>
+          <h1 id="profile-name" class="font-extrabold text-xl leading-tight tracking-tight">Personal Note</h1>
+          <div id="profile-handle" class="text-sm theme-sub mb-2">@my_private_x</div>
+          <p id="profile-bio" class="text-sm whitespace-pre-wrap leading-relaxed"></p>
         </div>
       </section>
 
@@ -350,7 +395,7 @@
   </div>
 
   <!-- 右下フローティング「＋」投稿ボタン -->
-  <button onclick="openPostModal()" class="fixed right-5 bottom-20 md:bottom-8 z-40 w-14 h-14 rounded-full theme-accent-bg text-white shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition" title="新規ポスト">
+  <button onclick="openPostModal()" class="md:hidden fixed right-5 bottom-20 z-40 w-14 h-14 rounded-full theme-accent-bg text-white shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition" title="新規ポスト">
     <i data-lucide="plus" class="w-7 h-7"></i>
   </button>
 
@@ -626,7 +671,7 @@
     const db = getDatabase(app);
     const provider = new GoogleAuthProvider();
 
-    const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%231d9bf0'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='central' text-anchor='middle' fill='%23ffffff' font-family='sans-serif' font-weight='900' font-size='52'%3E%F0%9D%95%8F%3C/text%3E%3C/svg%3E";
+    const DEFAULT_AVATAR = "./icons/favicon.svg";
 
     let currentUser = null;
     let postsData = [];
@@ -1308,7 +1353,7 @@
       if (!categories.includes('すべて')) categories.unshift('すべて');
 
       tabBar.innerHTML = categories.map((cat, i) => `
-        <button id="tab-btn-${i}" onclick="selectCategory(${jsArg(cat)})" class="px-4 py-3 whitespace-nowrap border-b-2 transition ${currentCategory === cat ? 'theme-accent-border theme-accent-text font-extrabold' : 'border-transparent theme-sub hover:text-white'}">
+        <button id="tab-btn-${i}" onclick="selectCategory(${jsArg(cat)})" class="tab-btn ${currentCategory === cat ? 'is-active' : ''}">
           ${escapeHtml(cat)}
         </button>
       `).join('');
@@ -1414,7 +1459,7 @@
         const mBtn = document.getElementById(`m-nav-${f}`);
         const isActive = currentFilter === f;
         if (pcBtn) {
-          pcBtn.className = `w-full flex items-center gap-4 px-4 py-3 rounded-full transition ${isActive ? 'font-extrabold bg-white/10 text-white' : 'font-normal theme-sub hover:bg-white/5 hover:text-white'}`;
+          pcBtn.className = `w-full flex items-center gap-4 px-4 py-3 rounded-full transition text-[15px] ${isActive ? 'font-extrabold bg-white/10 text-white' : 'font-normal theme-sub hover:bg-white/5 hover:text-white'}`;
         }
         if (mBtn) {
           mBtn.className = `p-2 rounded-full transition ${isActive ? 'theme-accent-text bg-white/10' : 'theme-sub hover:text-white'}`;
@@ -1697,10 +1742,11 @@
       const tweetHref = safeHref(t.url || `https://x.com/i/status/${tid}`);
 
       const quoteHtml = (t.quote && !isQuoted) ? buildNativeTweetCardHtml(t.quote, true) : '';
+      const geminiKey = registerGeminiText(tweetPlainText(t));
 
       return `
         <div class="${isQuoted ? 'mt-2.5 p-3 rounded-xl bg-white/[0.03]' : 'my-2 p-3.5 rounded-2xl theme-card'} border theme-border transition">
-          <div class="flex items-center justify-between gap-2 mb-1.5">
+          <div class="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 mb-1.5">
             <div class="flex items-center gap-2 min-w-0">
               <img src="${escapeAttr(safeImgSrc(t.author?.avatar_url) || DEFAULT_AVATAR)}" referrerpolicy="no-referrer" class="${isQuoted ? 'w-5 h-5' : 'w-8 h-8'} rounded-full object-cover border theme-border shrink-0">
               <div class="flex items-center gap-1.5 flex-wrap min-w-0 text-xs">
@@ -1710,8 +1756,8 @@
               </div>
             </div>
             <div class="flex items-center gap-1 shrink-0">
-              <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">保存済</span>
-              <a href="${escapeAttr(tweetHref)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="text-[11px] theme-sub hover:text-white px-2 py-0.5 rounded-full border theme-border" title="本家Xで開く">𝕏 ↗</a>
+              <button onclick="askGeminiTweet('${geminiKey}', event)" class="chip-btn chip-gemini" title="このツイートをコピーしてGeminiで調べる">${GEMINI_ICON}<span>Gemini</span></button>
+              <a href="${escapeAttr(tweetHref)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="chip-btn" title="本家Xで開く">Xで開く</a>
             </div>
           </div>
           <div class="whitespace-pre-wrap post-text leading-relaxed ${shouldCollapse ? 'post-collapsed' : ''}">${escapedText}</div>
@@ -2515,11 +2561,10 @@
             <img src="${escapeAttr(favicon)}" class="w-9 h-9 rounded-lg bg-white/10 p-1.5 object-contain shrink-0" onerror="this.style.display='none'">
             <div class="min-w-0 flex-1">
               <div class="text-xs theme-sub truncate flex items-center gap-1">
-                <span>🔗 ${escapeHtml(hostname)}</span>
+                <span>${escapeHtml(hostname)}</span>
               </div>
               <div class="text-sm font-bold theme-accent-text group-hover:underline truncate mt-0.5">${escapeHtml(safeUrl)}</div>
             </div>
-            <span class="text-xs theme-sub group-hover:text-white shrink-0">↗</span>
           </div>
         </a>
       `;
@@ -2532,31 +2577,155 @@
       renderFeed();
     };
 
-    window.copyPostText = async function(id, e) {
+    // ---- ポスト／ツイートの文章化 ----
+    function tweetPlainText(t) {
+      if (!t) return '';
+      const who = t.author ? `${t.author.name || ''}（@${t.author.screen_name || ''}）` : '';
+      const tid = /^\d+$/.test(String(t.id)) ? String(t.id) : '';
+      const url = t.url || (tid ? `https://x.com/i/status/${tid}` : '');
+      let out = [who, t.text || '', url].filter(Boolean).join('\n');
+      if (t.quote) out += '\n\n［引用元］\n' + tweetPlainText(t.quote);
+      return out;
+    }
+
+    // withTweetText: 埋め込んだツイートの本文も含める（GeminiはXのURLだけでは中身を読めないため）
+    function postPlainText(post, withTweetText = false) {
+      const parts = [];
+      const seenTweets = new Set();
+      const addUrl = (url, snap) => {
+        const tid = extractTweetId(url);
+        const data = withTweetText && tid ? (snap || post.tweetSnapshots?.[tid] || tweetCache[tid]) : null;
+        if (data) {
+          if (!seenTweets.has(tid)) { seenTweets.add(tid); parts.push(tweetPlainText(data)); }
+        } else {
+          parts.push(url);
+        }
+      };
+      if (post.title) parts.push(post.title);
+      (post.blocks || []).forEach(b => {
+        if (b.type === 'text' && b.content) {
+          parts.push(b.content);
+          if (withTweetText) {
+            (b.content.match(/https?:\/\/[^\s<"]+/gi) || []).forEach(u => {
+              const tid = extractTweetId(u);
+              const data = tid && (post.tweetSnapshots?.[tid] || tweetCache[tid]);
+              if (data && !seenTweets.has(tid)) { seenTweets.add(tid); parts.push(tweetPlainText(data)); }
+            });
+          }
+        } else if (b.type === 'embed' && b.url) {
+          addUrl(b.url, b.tweetSnapshot);
+        }
+      });
+      if (post.quotedExternalUrl) addUrl(post.quotedExternalUrl, post.quotedExternalSnapshot);
+      return parts.join('\n\n');
+    }
+
+    // クリック操作の中で確実にコピーする（別タブを開く前に同期で実行）
+    function copyTextSync(text) {
+      let ok = false;
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
+        document.body.appendChild(ta);
+        ta.select();
+        ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+      } catch (e) {}
+      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(() => {}, () => {});
+      return ok;
+    }
+
+    window.copyPostText = function(id, e) {
       if (e) e.stopPropagation();
       const post = postsData.find(p => p.id === id);
       if (!post) return;
-      const parts = [];
-      if (post.title) parts.push(post.title);
-      (post.blocks || []).forEach(b => {
-        if (b.type === 'text' && b.content) parts.push(b.content);
-        else if (b.type === 'embed' && b.url) parts.push(b.url);
-      });
-      if (post.quotedExternalUrl) parts.push(post.quotedExternalUrl);
-      const textToCopy = parts.join('\n\n');
-      try {
-        await navigator.clipboard.writeText(textToCopy);
-        showToast('ポストをコピーしました');
-      } catch (err) {
-        const ta = document.createElement('textarea');
-        ta.value = textToCopy;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        showToast('ポストをコピーしました');
-      }
+      copyTextSync(postPlainText(post));
+      showToast('ポストをコピーしました');
     };
+
+    // =========================================================================
+    // ★ Geminiで調べる：文章をそのままコピーして Gemini を開く
+    //    ?q= は対応環境（拡張機能など）で自動入力される。未対応でも貼り付けるだけ
+    // =========================================================================
+    const GEMINI_PATH = 'M12 2c.4 5.6 4.4 9.6 10 10-5.6.4-9.6 4.4-10 10-.4-5.6-4.4-9.6-10-10 5.6-.4 9.6-4.4 10-10z';
+    const GEMINI_ICON = `<svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="${GEMINI_PATH}"/></svg>`;
+    const GEMINI_ICON_LG = `<svg class="w-[17px] h-[17px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"><path d="${GEMINI_PATH}"/></svg>`;
+    const geminiTexts = new Map();
+
+    function registerGeminiText(text) {
+      let h = 5381;
+      for (let i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) | 0;
+      const key = 'g' + (h >>> 0).toString(36) + text.length.toString(36);
+      geminiTexts.set(key, text);
+      return key;
+    }
+
+    function sendToGemini(text) {
+      text = (text || '').trim();
+      if (!text) { showToast('送る文章がありません'); return; }
+      copyTextSync(text);
+      const q = text.length > 1800 ? text.slice(0, 1800) : text;
+      window.open('https://gemini.google.com/app?q=' + encodeURIComponent(q), '_blank', 'noopener');
+      showToast('コピーしました。Geminiに貼り付けて送信してください');
+    }
+
+    window.askGeminiPost = function(id, e) {
+      if (e) e.stopPropagation();
+      const post = postsData.find(p => p.id === id);
+      if (post) sendToGemini(postPlainText(post, true));
+    };
+    window.askGeminiTweet = function(key, e) {
+      if (e) e.stopPropagation();
+      sendToGemini(geminiTexts.get(key));
+    };
+
+    // =========================================================================
+    // ★ ポストの「…」メニュー（固定・編集・削除）
+    // =========================================================================
+    function closePostMenu() {
+      document.getElementById('post-menu').classList.add('hidden');
+    }
+    window.openPostMenu = function(id, btn, e) {
+      if (e) e.stopPropagation();
+      const menu = document.getElementById('post-menu');
+      const post = postsData.find(p => p.id === id);
+      if (!post) return;
+      if (!menu.classList.contains('hidden') && menu.dataset.postId === id) { closePostMenu(); return; }
+      const isRoot = threadRootId(post) === post.id;
+      const item = (action, label, icon, cls = '') =>
+        `<button role="menuitem" data-action="${action}" class="${cls}"><i data-lucide="${icon}" class="w-4 h-4"></i><span>${label}</span></button>`;
+      menu.innerHTML =
+        (isRoot ? item('pin', post.pinned ? '固定を外す' : 'プロフィールに固定', post.pinned ? 'pin-off' : 'pin') : '') +
+        item('edit', '編集', 'pencil') +
+        item('delete', '削除', 'trash-2', 'danger');
+      menu.dataset.postId = id;
+      menu.classList.remove('hidden');
+      lucide.createIcons();
+      const r = btn.getBoundingClientRect();
+      const mw = menu.offsetWidth, mh = menu.offsetHeight;
+      let left = Math.min(r.right - mw, window.innerWidth - mw - 8);
+      let top = r.bottom + 4;
+      if (top + mh > window.innerHeight - 8) top = Math.max(8, r.top - mh - 4);
+      menu.style.left = Math.max(8, left) + 'px';
+      menu.style.top = top + 'px';
+    };
+    document.getElementById('post-menu').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-action]');
+      if (!b) return;
+      const id = document.getElementById('post-menu').dataset.postId;
+      const post = postsData.find(p => p.id === id);
+      closePostMenu();
+      if (!post) return;
+      if (b.dataset.action === 'pin') togglePin(id, !!post.pinned);
+      else if (b.dataset.action === 'edit') startEdit(id);
+      else if (b.dataset.action === 'delete') deletePost(id);
+    });
+    document.addEventListener('click', (e) => { if (!e.target.closest('#post-menu')) closePostMenu(); });
+    window.addEventListener('scroll', closePostMenu, { passive: true });
+    window.addEventListener('resize', closePostMenu);
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePostMenu(); });
 
     function buildPostItemHtml(post, isChild = false, hasNextSibling = false, replyCount = 0, quoteCount = 0) {
       const dateStr = new Date(post.createdAt || Date.now()).toLocaleString('ja-JP', {
@@ -2669,16 +2838,21 @@
               <div class="text-[11px] theme-sub mb-1">↩ 返信元のポストは削除されています</div>
             ` : ''}
 
-            <div class="flex items-center justify-between text-xs theme-sub mb-1">
-              <div class="flex items-center gap-1.5 flex-wrap">
-                <span class="font-bold text-[14px]" style="color: var(--text-main)">${escapeHtml(profileData.name)}</span>
+            <div class="flex items-start justify-between gap-2 mb-0.5">
+              <div class="flex items-center gap-x-1.5 gap-y-0.5 flex-wrap min-w-0 post-meta">
+                <span class="post-name">${escapeHtml(profileData.name)}</span>
                 <span>${escapeHtml(profileData.handle)}</span>
-                <span>· ${dateStr}</span>
-                ${post.category ? `<span class="px-2 py-0.5 rounded-full bg-white/5 border theme-border text-[10px]">${escapeHtml(post.category)}</span>` : ''}
+                <span>${dateStr}</span>
+                ${post.category ? `<span class="cat-chip">${escapeHtml(post.category)}</span>` : ''}
               </div>
+              ${isSelectMode ? '' : `
+                <button onclick="openPostMenu('${post.id}', this, event)" class="act-btn -mt-1.5 -mr-2 shrink-0" title="その他の操作" aria-haspopup="menu">
+                  <span class="act-ic"><svg class="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></span>
+                </button>
+              `}
             </div>
 
-            ${post.title ? `<h3 class="font-bold text-base mb-1">${escapeHtml(post.title)}</h3>` : ''}
+            ${post.title ? `<h3 class="post-title">${escapeHtml(post.title)}</h3>` : ''}
 
             <div>
               ${blocksHtml}
@@ -2692,66 +2866,24 @@
 
             ${quotedCardHtml}
 
-            <!-- アクションバー -->
-            <div class="flex items-center justify-between max-w-md mt-2 -ml-2 text-xs theme-sub select-none">
-              <button onclick="event.stopPropagation(); openPostModal('${targetThreadId}')" class="group flex items-center gap-1 hover:text-sky-400 transition" title="スレッドに返信">
-                <div class="p-2 rounded-full group-hover:bg-sky-500/10 transition">
-                  <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z"/>
-                  </svg>
-                </div>
-                ${!isChild && replyCount > 0 ? `<span class="text-xs">${replyCount}</span>` : ''}
+            <!-- アクションバー（固定・編集・削除は右上の「…」メニュー） -->
+            <div class="flex items-center justify-between max-w-sm mt-1.5 -ml-2 text-[13px] select-none">
+              <button onclick="event.stopPropagation(); openPostModal('${targetThreadId}')" class="act-btn" title="スレッドに返信">
+                <span class="act-ic"><svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z"/></svg></span>
+                ${!isChild && replyCount > 0 ? `<span>${replyCount}</span>` : ''}
               </button>
-
-              <button onclick="event.stopPropagation(); openQuoteModal('${post.id}')" class="group flex items-center gap-1 ${quoteCount > 0 ? 'text-emerald-400' : 'hover:text-emerald-400'} transition" title="このポストを引用リツイート">
-                <div class="p-2 rounded-full group-hover:bg-emerald-500/10 transition">
-                  <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"/>
-                  </svg>
-                </div>
-                ${quoteCount > 0 ? `<span class="text-xs">${quoteCount}</span>` : ''}
+              <button onclick="event.stopPropagation(); openQuoteModal('${post.id}')" class="act-btn ${quoteCount > 0 ? 'is-on' : ''}" title="このポストを引用">
+                <span class="act-ic"><svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"/></svg></span>
+                ${quoteCount > 0 ? `<span>${quoteCount}</span>` : ''}
               </button>
-
-              <button onclick="event.stopPropagation(); toggleBookmark('${post.id}', ${!!post.bookmarked})" class="group flex items-center gap-1 ${post.bookmarked ? 'text-sky-400' : 'hover:text-sky-400'} transition" title="ブックマーク">
-                <div class="p-2 rounded-full group-hover:bg-sky-500/10 transition">
-                  <svg class="w-[18px] h-[18px]" fill="${post.bookmarked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"/>
-                  </svg>
-                </div>
+              <button onclick="event.stopPropagation(); toggleBookmark('${post.id}', ${!!post.bookmarked})" class="act-btn ${post.bookmarked ? 'is-on' : ''}" title="ブックマーク">
+                <span class="act-ic"><svg class="w-[18px] h-[18px]" fill="${post.bookmarked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"/></svg></span>
               </button>
-
-              <button onclick="copyPostText('${post.id}', event)" class="group flex items-center gap-1 hover:text-sky-400 transition" title="このポストをコピー">
-                <div class="p-2 rounded-full group-hover:bg-sky-500/10 transition">
-                  <svg class="w-[17px] h-[17px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/>
-                  </svg>
-                </div>
+              <button onclick="copyPostText('${post.id}', event)" class="act-btn" title="このポストをコピー">
+                <span class="act-ic"><svg class="w-[17px] h-[17px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/></svg></span>
               </button>
-
-              ${!isChild ? `
-                <button onclick="event.stopPropagation(); togglePin('${post.id}', ${!!post.pinned})" class="group flex items-center gap-1 ${post.pinned ? 'text-sky-400' : 'hover:text-sky-400'} transition" title="プロフィールに固定">
-                  <div class="p-2 rounded-full group-hover:bg-sky-500/10 transition">
-                    <svg class="w-[18px] h-[18px]" fill="${post.pinned ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z"/>
-                    </svg>
-                  </div>
-                </button>
-              ` : ''}
-
-              <button onclick="event.stopPropagation(); startEdit('${post.id}')" class="group flex items-center gap-1 hover:text-sky-400 transition" title="編集">
-                <div class="p-2 rounded-full group-hover:bg-sky-500/10 transition">
-                  <svg class="w-[17px] h-[17px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"/>
-                  </svg>
-                </div>
-              </button>
-
-              <button onclick="event.stopPropagation(); deletePost('${post.id}')" class="group flex items-center gap-1 hover:text-red-400 transition" title="削除">
-                <div class="p-2 rounded-full group-hover:bg-red-500/10 transition">
-                  <svg class="w-[17px] h-[17px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/>
-                  </svg>
-                </div>
+              <button onclick="askGeminiPost('${post.id}', event)" class="act-btn act-gemini" title="コピーしてGeminiで調べる">
+                <span class="act-ic">${GEMINI_ICON_LG}</span>
               </button>
             </div>
           </div>
@@ -2809,7 +2941,7 @@
           ? 'まだブックマークされたポストがありません。各ポストのリボンアイコンから保存できます。'
           : currentFilter === 'media'
           ? '写真や動画付きのポストがありません。'
-          : '表示できるポストがありません（右下の「＋」ボタンから投稿できます）';
+          : 'まだポストがありません。「ポストする」（スマホは右下の＋）から最初の1件を書けます。';
         list.innerHTML = `<div class="p-12 text-center text-sm theme-sub">${emptyMsg}</div>`;
         articleCache.clear();
         return;
