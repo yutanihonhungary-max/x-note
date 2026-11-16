@@ -21,14 +21,34 @@
   <meta name="apple-mobile-web-app-title" content="X-Note">
   
   <!-- Tailwind CSS, Lucide Icons, Marked -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- 前回ログイン済みなら、通信を待たずにアプリ画面を出す（ログイン画面を挟まない） -->
+  <script>
+    (function () {
+      try {
+        var b = JSON.parse(localStorage.getItem('xnote:boot') || 'null');
+        if (b && b.uid) {
+          var r = document.documentElement;
+          r.classList.add('authed');
+          if (b.bgMode === 'light') { r.classList.add('theme-light'); r.style.setProperty('--bg-main', '#ffffff'); r.style.setProperty('--text-main', '#0f1419'); }
+          else if (b.bgMode === 'dim') { r.style.setProperty('--bg-main', '#15202b'); }
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js" crossorigin>
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js" crossorigin>
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js" crossorigin>
+
+  <!-- Lucide Icons, Marked（deferで画面の表示を止めない。Tailwindは事前ビルドした tailwind.css を使用） -->
+  <script defer crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/lucide@1.73.0/dist/umd/lucide.min.js"></script>
+  <script defer crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js"></script>
 
   <!-- ★ KaTeX & mhchem（LaTeX数式・化学式レンダリング用） -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/mhchem.min.js"></script>
+  <link rel="stylesheet" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/mhchem.min.js"></script>
   
   <style>
     :root {
@@ -188,7 +208,13 @@
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
     }
+    /* 前回ログイン済みの端末では、最初からアプリ画面を表示 */
+    html.authed #login-screen { display: none; }
+    html.authed #app-screen.hidden { display: flex; }
+    #update-bar { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 70; }
   </style>
+  <!-- Tailwind（事前ビルド済み。クラスを増やしたら build.sh で作り直す） -->
+  <link rel="stylesheet" href="./tailwind.css">
 </head>
 <body class="min-h-screen selection:bg-sky-500 selection:text-white">
 
@@ -209,6 +235,9 @@
       <i data-lucide="x" class="w-4 h-4"></i>
     </button>
   </div>
+
+  <!-- 新しい版が配信されたときのお知らせ -->
+  <button id="update-bar" onclick="location.reload()" class="hidden px-4 py-2 rounded-full theme-accent-bg text-white text-xs font-bold shadow-2xl">新しい版があります。タップして更新</button>
 
   <!-- ポストの「…」メニュー（1つを使い回す） -->
   <div id="post-menu" class="hidden" role="menu"></div>
@@ -236,7 +265,7 @@
         <div class="px-3 pt-1 pb-4 flex items-center gap-2.5">
           <img src="./icons/favicon.svg" alt="" class="w-8 h-8">
           <span class="text-xl font-extrabold tracking-tight">X-Note</span>
-          <span class="text-[11px] theme-sub ml-auto">v4.3</span>
+          <span class="text-[11px] theme-sub ml-auto">v4.4</span>
         </div>
         <button id="nav-btn-all" onclick="setFilter('all')" class="w-full flex items-center gap-4 px-4 py-3 rounded-full hover:bg-white/5 transition text-[15px]">
           <i data-lucide="home" class="w-5 h-5"></i> <span>ホーム</span>
@@ -866,7 +895,7 @@
       try { d.transaction('m', 'readwrite').objectStore('m').put(val, key); } catch (e) {}
     }
 
-    function mediaKey(id) { return `${currentUser?.uid || 'anon'}/${id}`; }
+    function mediaKey(id) { return `${currentUser?.uid || bootUid || 'anon'}/${id}`; }
 
     function rememberMedia(id, dataUrl) {
       mediaMemCache.set(id, Promise.resolve(dataUrl));
@@ -877,6 +906,7 @@
       if (mediaMemCache.has(id)) return mediaMemCache.get(id);
       const p = (async () => {
         let v = await idbGet(mediaKey(id));
+        if (!v && !currentUser) await authReady; // 起動直後はログイン確認が終わるのを待つ
         if (!v && currentUser) {
           try {
             const snap = await get(ref(db, `users/${currentUser.uid}/media/${id}`));
@@ -1051,23 +1081,96 @@
     });
     document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 
+    // =========================================================================
+    // ★ 起動の高速化：前回の内容を端末に保存しておき、通信を待たずに表示する
+    // =========================================================================
+    let bootUid = null;
+    try { bootUid = JSON.parse(localStorage.getItem('xnote:boot') || 'null')?.uid || null; } catch (e) {}
+    let resolveAuthReady;
+    const authReady = new Promise(r => { resolveAuthReady = r; });
+
+    let bootSaveTimer = null;
+    function scheduleBootSave() {
+      clearTimeout(bootSaveTimer);
+      bootSaveTimer = setTimeout(saveBootCache, 800);
+    }
+    function saveBootCache() {
+      if (!currentUser) return;
+      const uid = currentUser.uid;
+      const posts = postsData.map(p => ({
+        ...p,
+        // 未移行のbase64画像は保存しない（容量節約）
+        blocks: (p.blocks || []).map(b => (b.type === 'image' && typeof b.url === 'string' && b.url.startsWith('data:')) ? { ...b, url: '' } : b)
+      }));
+      const base = { v: 1, posts, profile: profileData, categories, settings: themeSettings, email: currentUser.email || '' };
+      try {
+        localStorage.setItem('xnote:boot', JSON.stringify({ uid, bgMode: themeSettings.bgMode }));
+        try {
+          localStorage.setItem('xnote:cache:' + uid, JSON.stringify({ ...base, tweets: tweetCache }));
+        } catch (e) {
+          // 容量オーバー時はツイートの控えと画像プロフィールを除いて保存
+          localStorage.setItem('xnote:cache:' + uid, JSON.stringify({ ...base, profile: { ...profileData, avatar: '', banner: '' } }));
+        }
+      } catch (e) {
+        try { localStorage.removeItem('xnote:cache:' + uid); } catch (e2) {}
+      }
+    }
+    function clearBootCache() {
+      try {
+        if (bootUid) localStorage.removeItem('xnote:cache:' + bootUid);
+        localStorage.removeItem('xnote:boot');
+      } catch (e) {}
+      bootUid = null;
+      document.documentElement.classList.remove('authed');
+    }
+    // 前回保存した内容で先に画面を組み立てる（モジュール末尾から呼ぶ）
+    function renderFromBootCache() {
+      if (!bootUid) return;
+      let c = null;
+      try { c = JSON.parse(localStorage.getItem('xnote:cache:' + bootUid) || 'null'); } catch (e) {}
+      if (!c) return;
+      try {
+        if (c.tweets) Object.assign(tweetCache, c.tweets);
+        if (Array.isArray(c.posts)) postsData = c.posts;
+        if (c.profile) profileData = { ...profileData, ...c.profile };
+        if (Array.isArray(c.categories)) categories = c.categories;
+        if (c.settings) themeSettings = { ...themeSettings, ...c.settings };
+        document.getElementById('user-email').textContent = c.email || '';
+        applyThemeSettings();
+        applyProfileUI();
+        renderCategories();
+        updateNavigationUI();
+        renderFeed();
+      } catch (e) { console.error('boot cache error', e); }
+    }
+
+    document.getElementById('logout-btn').addEventListener('click', clearBootCache, true);
+
     onAuthStateChanged(auth, (user) => {
       currentUser = user;
+      resolveAuthReady();
       if (!user) {
         migrationDone = false;
         mediaMemCache.clear();
+        clearBootCache();
+        postsData = [];
         document.getElementById('login-screen').classList.remove('hidden');
         document.getElementById('app-screen').classList.add('hidden');
         return;
       }
+      if (bootUid && bootUid !== user.uid) { clearBootCache(); postsData = []; }
+      bootUid = user.uid;
+      document.documentElement.classList.add('authed');
       document.getElementById('login-screen').classList.add('hidden');
       document.getElementById('app-screen').classList.remove('hidden');
       document.getElementById('user-email').textContent = user.email;
+      scheduleBootSave();
 
       onValue(ref(db, `users/${user.uid}/tweetSnapshots`), (snap) => {
         const val = snap.val() || {};
         Object.entries(val).forEach(([tid, tData]) => {
           tweetCache[tid] = tData;
+        scheduleBootSave();
         });
         renderFeed();
       });
@@ -1077,22 +1180,26 @@
         postsData = Object.entries(val).map(([id, item]) => ({ id, ...item }));
         updateNavigationUI();
         renderFeed();
+        scheduleBootSave();
         migrateInlineImages();
       });
 
       onValue(ref(db, `users/${user.uid}/profile`), (snap) => {
         if (snap.val()) profileData = { ...profileData, ...snap.val() };
         applyProfileUI();
+        scheduleBootSave();
       });
 
       onValue(ref(db, `users/${user.uid}/categories`), (snap) => {
         if (snap.val() && Array.isArray(snap.val())) categories = snap.val();
         renderCategories();
+        scheduleBootSave();
       });
 
       onValue(ref(db, `users/${user.uid}/settings`), (snap) => {
         if (snap.val()) themeSettings = { ...themeSettings, ...snap.val() };
         applyThemeSettings();
+        scheduleBootSave();
       });
     });
 
@@ -2398,7 +2505,8 @@
 
     let isSavingPost = false;
     window.savePost = async function() {
-      if (!currentUser || isSavingPost) return;
+      if (isSavingPost) return;
+      if (!currentUser) { showToast('接続中です。数秒後にもう一度押してください'); return; }
       const title = document.getElementById('post-title').value.trim();
       const category = document.getElementById('post-category').value || 'メモ';
       const cleanedBlocks = editorBlocks
@@ -3052,7 +3160,16 @@
     updateNavigationUI();
     renderCategories();
     renderEditor();
+    renderFromBootCache();
     lucide.createIcons();
+
+    // Service Worker：アプリ本体とライブラリを端末に保存し、2回目以降の起動を速くする
+    if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+      navigator.serviceWorker.register('./sw.js').catch(e => console.warn('sw', e));
+      navigator.serviceWorker.addEventListener('message', (e) => {
+        if (e.data && e.data.type === 'xnote-update') document.getElementById('update-bar').classList.remove('hidden');
+      });
+    }
   </script>
 </body>
 </html>
